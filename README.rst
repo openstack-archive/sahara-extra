@@ -6,4 +6,4 @@ Savanna-extra is place for Savanna components not included into the main `Savann
 Here is the list of components:
 
 * `Diskimage-builder <https://github.com/stackforge/diskimage-builder>`_ elements: https://github.com/stackforge/savanna-extra/blob/master/elements/README.rst
-
+* Sources for Swift filesystem implementation for Hadoop: https://github.com/stackforge/savanna-extra/blob/master/hadoop-swiftfs/README.rst 
