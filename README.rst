@@ -13,6 +13,6 @@ Here is the list of components:
 
     sudo bash diskimage-create.sh
 
-Note: More information about script `diskimage-creating <https://github.com/stackforge/savanna-extra/blob/master/diskimage-creating/README.rst>`_
+Note: More information about script `diskimage-create <https://github.com/stackforge/savanna-extra/blob/master/diskimage-create/README.rst>`_
 
 * Sources for Swift filesystem implementation for Hadoop: https://github.com/stackforge/savanna-extra/blob/master/hadoop-swiftfs/README.rst
