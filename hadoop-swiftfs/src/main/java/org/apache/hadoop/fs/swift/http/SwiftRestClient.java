@@ -172,6 +172,12 @@ public final class SwiftRestClient {
    */
   private URI objectLocationURI;
 
+  /**
+   * Entry in the swift catalog defining the prefix used to talk to objects
+   */
+  private String authEndpointPrefix;
+
+
   private final URI filesystemURI;
 
   /**
@@ -273,6 +279,14 @@ public final class SwiftRestClient {
       objectLocationURI = objectLocation;
       token = authToken;
     }
+  }
+
+  public String getAuthEndpointPrefix() {
+    return authEndpointPrefix;
+  }
+
+  public void setAuthEndpointPrefix(String authEndpointPrefix) {
+    this.authEndpointPrefix = authEndpointPrefix;
   }
 
 
@@ -464,6 +478,7 @@ public final class SwiftRestClient {
     container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
     String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
     usePublicURL = "true".equals(isPubProp);
+    authEndpointPrefix = getOption(props, SWIFT_AUTH_ENDPOINT_PREFIX);
 
         if (apiKey == null && password == null) {
             throw new SwiftConfigurationException(
@@ -591,7 +606,7 @@ public final class SwiftRestClient {
   /**
    * Make an HTTP GET request to Swift to get a range of data in the object.
    *
-   * @param path   path to object
+   * @param url   url to object
    * @param offset offset from file beginning
    * @param length file length
    * @return The input stream -which must be closed afterwards.
@@ -599,18 +614,18 @@ public final class SwiftRestClient {
    * @throws SwiftException swift specific error
    * @throws FileNotFoundException path is not there
    */
-  public HttpBodyContent getData(SwiftObjectPath path,
+  public HttpBodyContent getData(URI url,
                                  long offset,
                                  long length) throws IOException {
     if (offset < 0) {
       throw new SwiftException("Invalid offset: " + offset
-                            + " in getDataAsInputStream( path=" + path
+                            + " in getDataAsInputStream( url=" + url
                             + ", offset=" + offset
                             + ", length =" + length + ")");
     }
     if (length <= 0) {
       throw new SwiftException("Invalid length: " + length
-                + " in getDataAsInputStream( path="+ path
+                + " in getDataAsInputStream( url="+ url
                             + ", offset=" + offset
                             + ", length ="+ length + ")");
     }
@@ -622,10 +637,28 @@ public final class SwiftRestClient {
       LOG.debug("getData:" + range);
     }
 
-    return getData(path,
+    return getData(url,
                    new Header(HEADER_RANGE, range),
                    SwiftRestClient.NEWEST);
   }
+
+  /**
+   * Make an HTTP GET request to Swift to get a range of data in the object.
+   *
+   * @param path   path to object
+   * @param offset offset from file beginning
+   * @param length file length
+   * @return The input stream -which must be closed afterwards.
+   * @throws IOException Problems
+   * @throws SwiftException swift specific error
+   * @throws FileNotFoundException path is not there
+   */
+  public HttpBodyContent getData(SwiftObjectPath path,
+                                 long offset,
+                                 long length) throws IOException {
+    return getData(pathToURI(path), offset, length);
+  }
+
 
   /**
    * Returns object length
@@ -675,10 +708,26 @@ public final class SwiftRestClient {
   public HttpBodyContent getData(SwiftObjectPath path,
                                  final Header... requestHeaders)
           throws IOException {
-    preRemoteCommand("getData");
-    return doGet(pathToURI(path),
-            requestHeaders);
+    return getData(pathToURI(path), requestHeaders);
   }
+
+    /**
+     * Get the path contents as an input stream.
+     * <b>Warning:</b> this input stream must be closed to avoid
+     * keeping Http connections open.
+     *
+     * @param url path to file
+     * @param requestHeaders http headers
+     * @return byte[] file data or null if the object was not found
+     * @throws IOException on IO Faults
+     * @throws FileNotFoundException if there is nothing at the path
+     */
+    public HttpBodyContent getData(URI url,
+                                   final Header... requestHeaders)
+            throws IOException {
+        preRemoteCommand("getData");
+        return doGet(url, requestHeaders);
+    }
 
   /**
    * Returns object location as byte[]
@@ -1193,8 +1242,7 @@ public final class SwiftRestClient {
 
 
       accessToken = access.getToken();
-      String path = SWIFT_OBJECT_AUTH_ENDPOINT
-                    + swiftEndpoint.getTenantId();
+      String path = getAuthEndpointPrefix() + accessToken.getTenant().getId();
       String host = endpointURI.getHost();
       try {
         objectLocation = new URI(endpointURI.getScheme(),

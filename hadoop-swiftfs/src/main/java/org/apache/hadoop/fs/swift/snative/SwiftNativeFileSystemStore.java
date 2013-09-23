@@ -35,22 +35,19 @@ import org.apache.hadoop.fs.swift.util.DurationStats;
 import org.apache.hadoop.fs.swift.util.JSONUtil;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
+import org.apache.hadoop.net.DNSToSwitchMapping;
+import org.apache.hadoop.net.ScriptBasedMapping;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.codehaus.jackson.map.type.CollectionType;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InterruptedIOException;
+import java.io.*;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -65,6 +62,7 @@ public class SwiftNativeFileSystemStore {
           LogFactory.getLog(SwiftNativeFileSystemStore.class);
   private URI uri;
   private SwiftRestClient swiftRestClient;
+  private DNSToSwitchMapping dnsToSwitchMapping;
 
   /**
    * Initalize the filesystem store -this creates the REST client binding.
@@ -76,6 +74,10 @@ public class SwiftNativeFileSystemStore {
    */
   public void initialize(URI fsURI, Configuration configuration) throws IOException {
     this.uri = fsURI;
+    dnsToSwitchMapping = ReflectionUtils.newInstance(
+        configuration.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
+            DNSToSwitchMapping.class), configuration);
+
     this.swiftRestClient = SwiftRestClient.getInstance(fsURI, configuration);
   }
 
@@ -271,8 +273,85 @@ public class SwiftNativeFileSystemStore {
    * @throws FileNotFoundException path doesn't resolve to an object
    */
   public HttpBodyContent getObject(Path path) throws IOException {
+    List<String> locations = getDataLocalEndpoints(path);
+
+    for (String url : locations) {
+      try {
+        return swiftRestClient.getData(new URI(url),
+            SwiftRestClient.NEWEST);
+      } catch (Exception e) {
+        // Ignore
+        // It is possible that endpoint doesn't contains needed data.
+      }
+    }
+
     return swiftRestClient.getData(toObjectPath(path),
-                                   SwiftRestClient.NEWEST);
+                                 SwiftRestClient.NEWEST);
+  }
+
+  /**
+   * Returns list of endpoints for given swift path that are local for the
+   * host. List is returned in order of preference.
+   */
+  private List<String> getDataLocalEndpoints(Path path) throws IOException {
+    final String hostRack = getHostRack();
+
+    List<URI> uriLocations = getObjectLocation(path);
+    List<String> strLocations = new ArrayList<String>();
+    final Map<String, Integer> similarityMap = new HashMap<String, Integer>();
+    for (URI uri : uriLocations) {
+      String url = uri.toString();
+      int similarity = getSimilarity(getRack(uri.getHost()), hostRack);
+      if (similarity > 0) {
+        strLocations.add(url);
+        similarityMap.put(url, similarity);
+      }
+    }
+
+    Collections.sort(strLocations, new Comparator<String>() {
+      @Override
+      public int compare(String o1, String o2) {
+        Integer dst1 = similarityMap.get(o1);
+        Integer dst2 = similarityMap.get(o2);
+        return -dst1.compareTo(dst2);
+      }
+    });
+
+    return strLocations;
+  }
+
+  /**
+   * Returns similarity index for two racks.
+   * Bigger numbers correspond to closer location.
+   * Zero corresponds to different racks.
+   *
+   * @param rack1 path to rack1
+   * @param rack2 path to rack2
+   * @return the similarity index
+   */
+  private int getSimilarity(String rack1, String rack2) {
+    String[] r1 = rack1.split("/");
+    String[] r2 = rack2.split("/");
+    int i = 1; //skip leading empty string
+    while (i < r1.length && i < r2.length && r1[i].equals(r2[i])) {
+      i++;
+    }
+
+    return i - 1;
+  }
+
+  private String getHostRack() throws SwiftException {
+    String hostAddress;
+    try {
+      hostAddress = InetAddress.getLocalHost().getHostAddress();
+    } catch (UnknownHostException e) {
+      throw new SwiftException("Failed to get localhost address", e);
+    }
+    return getRack(hostAddress);
+  }
+
+  private String getRack(String url) {
+    return dnsToSwitchMapping.resolve(Arrays.asList(url)).get(0);
   }
 
   /**
@@ -286,6 +365,16 @@ public class SwiftNativeFileSystemStore {
    */
   public HttpBodyContent getObject(Path path, long byteRangeStart, long length)
           throws IOException {
+    List<String> locations = getDataLocalEndpoints(path);
+
+    for (String url : locations) {
+      try {
+        return swiftRestClient.getData(new URI(url), byteRangeStart, length);
+      } catch (Exception e) {
+        //Ignore
+      }
+    }
+
     return swiftRestClient.getData(
       toObjectPath(path), byteRangeStart, length);
   }
