@@ -79,12 +79,6 @@ public class SwiftProtocolConstants {
   public static final String SERVICE_CATALOG_OBJECT_STORE = "object-store";
 
   /**
-   * entry in the swift catalog defining the prefix used to talk to objects
-   *  {@value}
-   */
-  public static final String SWIFT_OBJECT_AUTH_ENDPOINT =
-          "/object_endpoint/";
-  /**
    * Swift-specific header: object manifest used in the final upload
    * of a multipart operation: {@value}
    */
@@ -211,6 +205,7 @@ public class SwiftProtocolConstants {
   public static final String DOT_CONTAINER = ".CONTAINER-NAME";
 
   public static final String DOT_AUTH_URL = ".auth.url";
+  public static final String DOT_AUTH_ENDPOINT_PREFIX = ".auth.endpoint.prefix";
   public static final String DOT_TENANT = ".tenant";
   public static final String DOT_USERNAME = ".username";
   public static final String DOT_PASSWORD = ".password";
@@ -232,6 +227,8 @@ public class SwiftProtocolConstants {
   public static final String SWIFT_CONTAINER_PROPERTY = FS_SWIFT + DOT_CONTAINER;
 
   public static final String SWIFT_AUTH_PROPERTY = FS_SWIFT + DOT_AUTH_URL;
+  public static final String SWIFT_AUTH_ENDPOINT_PREFIX =
+      FS_SWIFT + DOT_AUTH_ENDPOINT_PREFIX;
   public static final String SWIFT_TENANT_PROPERTY = FS_SWIFT + DOT_TENANT;
   public static final String SWIFT_USERNAME_PROPERTY = FS_SWIFT + DOT_USERNAME;
   public static final String SWIFT_PASSWORD_PROPERTY = FS_SWIFT + DOT_PASSWORD;
