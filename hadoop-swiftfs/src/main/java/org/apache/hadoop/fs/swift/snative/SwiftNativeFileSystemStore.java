@@ -276,6 +276,9 @@ public class SwiftNativeFileSystemStore {
     List<String> locations = getDataLocalEndpoints(path);
 
     for (String url : locations) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Reading " + path + " from location: " + url);
+      }
       try {
         return swiftRestClient.getData(new URI(url),
             SwiftRestClient.NEWEST);
@@ -285,6 +288,9 @@ public class SwiftNativeFileSystemStore {
       }
     }
 
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Reading " + path + " from proxy node");
+    }
     return swiftRestClient.getData(toObjectPath(path),
                                  SwiftRestClient.NEWEST);
   }
@@ -368,11 +374,18 @@ public class SwiftNativeFileSystemStore {
     List<String> locations = getDataLocalEndpoints(path);
 
     for (String url : locations) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Reading " + path + " from location: " + url);
+      }
       try {
         return swiftRestClient.getData(new URI(url), byteRangeStart, length);
       } catch (Exception e) {
         //Ignore
       }
+    }
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Reading " + path + " from proxy node");
     }
 
     return swiftRestClient.getData(
