@@ -71,5 +71,6 @@ or MapReduce job.
    a) Add the input and output paths to ``args``
    b) If swift input or output paths are used, set the ``fs.swift.service.savanna.username`` and ``fs.swift.service.savanna.password``
       configuration values
+   c) The Savanna UI will prompt for the required ``main_class`` value and the optional ``java_opts`` value
 
 
