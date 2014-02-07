@@ -632,7 +632,7 @@ Hadoop OpenStack Support: Swift Object Store
 +--
 
   Into this file, insert the credentials needed to bond to the test filesystem,
-  as decribed above.
+  as described above.
 
   Next set the property <<<test.fs.swift.name>>> to the URL of a
   swift container to test against. The tests expect exclusive access

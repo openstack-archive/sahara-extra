@@ -65,7 +65,7 @@ public class SwiftNativeFileSystemStore {
   private DNSToSwitchMapping dnsToSwitchMapping;
 
   /**
-   * Initalize the filesystem store -this creates the REST client binding.
+   * Initialize the filesystem store -this creates the REST client binding.
    *
    * @param fsURI         URI of the filesystem, which is used to map to the filesystem-specific
    *                      options in the configuration file
