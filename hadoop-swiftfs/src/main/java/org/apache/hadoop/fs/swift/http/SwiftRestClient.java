@@ -637,6 +637,7 @@ public final class SwiftRestClient {
       LOG.debug("getData:" + range);
     }
 
+    preRemoteCommand("getData");
     return getData(url,
                    new Header(HEADER_RANGE, range),
                    SwiftRestClient.NEWEST);
@@ -656,6 +657,7 @@ public final class SwiftRestClient {
   public HttpBodyContent getData(SwiftObjectPath path,
                                  long offset,
                                  long length) throws IOException {
+    preRemoteCommand("getData");
     return getData(pathToURI(path), offset, length);
   }
 
@@ -708,6 +710,7 @@ public final class SwiftRestClient {
   public HttpBodyContent getData(SwiftObjectPath path,
                                  final Header... requestHeaders)
           throws IOException {
+    preRemoteCommand("getData");
     return getData(pathToURI(path), requestHeaders);
   }
 
