@@ -43,8 +43,8 @@ To run this example from Oozie, you will need to modify the ``job.properties`` f
 to specify the correct ``jobTracker`` and ``nameNode`` addresses for your cluster.
 
 You will also need to modify the ``workflow.xml`` file to contain the correct input
-and output paths. These paths may be Savanna swift urls or hdfs paths. If swift
-urls are used, set the ``fs.swift.service.savanna.username`` and ``fs.swift.service.savanna.password``
+and output paths. These paths may be Sahara swift urls or hdfs paths. If swift
+urls are used, set the ``fs.swift.service.sahara.username`` and ``fs.swift.service.sahara.password``
 properties in the ``<configuration>`` section.
 
 1) Upload the ``wordcount`` directory to hdfs
@@ -55,12 +55,12 @@ properties in the ``<configuration>`` section.
 
   ``$ oozie job -oozie http://oozie_server:port/oozie -config wordcount/job.properties -run``
 
-3) Don't forget to create your swift input path!  A Savanna swift url looks like *swift://container.savanna/object*
+3) Don't forget to create your swift input path!  A Sahara swift url looks like *swift://container.sahara/object*
 
-Running from the Savanna UI
+Running from the Sahara UI
 ===========================
 
-Running the WordCount example from the Savanna UI is very similar to running a Pig, Hive,
+Running the WordCount example from the Sahara UI is very similar to running a Pig, Hive,
 or MapReduce job.
 
 1) Create a job binary that points to the ``edp-wordcount.jar`` file
@@ -69,8 +69,8 @@ or MapReduce job.
 
 
    a) Add the input and output paths to ``args``
-   b) If swift input or output paths are used, set the ``fs.swift.service.savanna.username`` and ``fs.swift.service.savanna.password``
+   b) If swift input or output paths are used, set the ``fs.swift.service.sahara.username`` and ``fs.swift.service.sahara.password``
       configuration values
-   c) The Savanna UI will prompt for the required ``main_class`` value and the optional ``java_opts`` value
+   c) The Sahara UI will prompt for the required ``main_class`` value and the optional ``java_opts`` value
 
 

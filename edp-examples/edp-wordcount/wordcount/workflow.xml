@@ -27,17 +27,17 @@
                     <value>${queueName}</value>
                 </property>
                 <property>
-                    <name>fs.swift.service.savanna.username</name>
+                    <name>fs.swift.service.sahara.username</name>
                     <value>swiftuser</value>
                 </property>
                 <property>
-                    <name>fs.swift.service.savanna.password</name>
+                    <name>fs.swift.service.sahara.password</name>
                     <value>swiftpassword</value>
                 </property>
             </configuration>
             <main-class>org.apache.hadoop.examples.WordCount</main-class>
-            <arg>swift://user.savanna/input</arg>
-            <arg>swift://user.savanna/output</arg>
+            <arg>swift://user.sahara/input</arg>
+            <arg>swift://user.sahara/output</arg>
         </java>
         <ok to="end"/>
         <error to="fail"/>
