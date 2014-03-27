@@ -1,5 +1,5 @@
-Sahara-extra project
-====================
+OpenStack Data Processing ("Sahara") extra repo
+===============================================
 
 Sahara-extra is place for Sahara components not included into the main `Sahara repository <https://github.com/openstack/sahara>`_
 
