@@ -29,15 +29,20 @@ will compile ``WordCount.java`` from within the ``src`` directory::
 
 $ mkdir wordcount_classes
 $ javac -classpath /usr/share/hadoop/hadoop-core-1.2.1.jar:/usr/share/hadoop/lib/commons-cli-1.2.jar -d wordcount_classes WordCount.java
-$ jar -cvf edp-wordcount.jar -C wordcount_classes/ .
+$ jar -cvf edp-java.jar -C wordcount_classes/ .
 
-(A compiled ``edp-wordcount.jar`` is included in ``wordcount/lib``. Replace it if you rebuild)
+(A compiled ``edp-java.jar`` is included in ``wordcount/lib``. Replace it if you rebuild)
+
+Note, on a node with hadoop 2.3.0 the ``javac`` command above can be replaced with:
+
+$ javac -classpath /opt/hadoop-2.3.0/share/hadoop/common/hadoop-common-2.3.0.jar:/opt/hadoop-2.3.0/share/hadoop/mapreduce/hadoop-mapreduce-client-core-2.3.0.jar:/opt/hadoop-2.3.0/share/hadoop/common/lib/commons-cli-1.2.jar:/opt/hadoop-2.3.0/share/hadoop/mapreduce/lib/hadoop-annotations-2.3.0.jar -d wordcount_classes WordCount.java
+
 
 Running from the command line with Oozie
 ========================================
 
 The ``wordcount`` subdirectory contains a ``job.properties`` file, a ``workflow.xml`` file,
-and a ``lib`` directory with an ``edp-wordcount.jar`` compiled as above.
+and a ``lib`` directory with an ``edp-java.jar`` compiled as above.
 
 To run this example from Oozie, you will need to modify the ``job.properties`` file
 to specify the correct ``jobTracker`` and ``nameNode`` addresses for your cluster.
@@ -63,7 +68,7 @@ Running from the Sahara UI
 Running the WordCount example from the Sahara UI is very similar to running a Pig, Hive,
 or MapReduce job.
 
-1) Create a job binary that points to the ``edp-wordcount.jar`` file
+1) Create a job binary that points to the ``edp-java.jar`` file
 2) Create a ``Java`` job type and add the job binary to the ``libs`` value
 3) Launch the job:
 
