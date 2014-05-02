@@ -35,7 +35,7 @@
                     <value>swiftpassword</value>
                 </property>
             </configuration>
-            <main-class>org.apache.hadoop.examples.WordCount</main-class>
+            <main-class>org.openstack.sahara.examples.WordCount</main-class>
             <arg>swift://user.sahara/input</arg>
             <arg>swift://user.sahara/output</arg>
         </java>
