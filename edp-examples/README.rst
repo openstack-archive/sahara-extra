@@ -1,5 +1,4 @@
 EDP Examples
 ============
 
-* Pig job example - trim spaces in input file
-* Edp wordcount - a version of WordCount that works with swift input and output
+The EDP examples have been moved to the **sahara** repo under *sahara/edp-examples*
