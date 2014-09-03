@@ -24,13 +24,34 @@ package org.apache.hadoop.fs.swift.auth;
  * THIS FILE IS MAPPED BY JACKSON TO AND FROM JSON.
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
  */
-public class AuthenticationRequest {
+public class AuthenticationRequestV2 extends AuthenticationRequest {
 
-  public AuthenticationRequest() {
+  /**
+   * tenant name
+   */
+  protected String tenantName;
+
+  public AuthenticationRequestV2() {
+  }
+
+  /**
+   * @return tenant name for Keystone authorization
+   */
+  public String getTenantName() {
+    return tenantName;
+  }
+
+  /**
+   * @param tenantName tenant name for authorization
+   */
+  public void setTenantName(String tenantName) {
+    this.tenantName = tenantName;
   }
 
   @Override
   public String toString() {
-    return "AuthenticationRequest";
+    return "AuthenticationRequestV2{" +
+           "tenantName='" + tenantName + '\'' +
+           '}';
   }
 }

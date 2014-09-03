@@ -26,7 +26,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * THIS FILE IS MAPPED BY JACKSON TO AND FROM JSON.
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS
  */
-public class ApiKeyAuthenticationRequest extends AuthenticationRequest {
+public class ApiKeyAuthenticationRequest extends AuthenticationRequestV2 {
   /**
    * Credentials for login
    */
