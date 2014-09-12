@@ -95,6 +95,16 @@
           <target>1.6</target>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <configuration>
+          <configLocation>file://${basedir}/checkstyle.xml</configLocation>
+          <failOnViolation>false</failOnViolation>
+          <format>xml</format>
+          <format>html</format>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
