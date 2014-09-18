@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,19 +18,45 @@
 
 package org.apache.hadoop.fs.swift.auth;
 
+import org.apache.hadoop.fs.swift.auth.entities.CatalogV3;
+import org.apache.hadoop.fs.swift.auth.entities.Tenant;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
+import java.util.List;
+
 /**
- * Class that represents authentication request to Openstack Keystone.
- * Contains basic authentication information.
+ * Response from KeyStone deserialized into AuthenticationResponse class.
  * THIS FILE IS MAPPED BY JACKSON TO AND FROM JSON.
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
  */
-public class AuthenticationRequest {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class AuthenticationResponseV3 {
+  private List<CatalogV3> catalog;
+  private String expires_at;
+  private Tenant project;
 
-  public AuthenticationRequest() {
+  public List<CatalogV3> getCatalog() {
+    return catalog;
   }
 
-  @Override
-  public String toString() {
-    return "AuthenticationRequest";
+  public void setCatalog(List<CatalogV3> catalog) {
+    this.catalog = catalog;
   }
+
+  public String getExpires_at() {
+    return expires_at;
+  }
+
+  public void setExpires_at(String expires_at) {
+    this.expires_at = expires_at;
+  }
+
+  public Tenant getProject() {
+    return project;
+  }
+
+  public void setProject(Tenant project) {
+    this.project = project;
+  }
+
 }

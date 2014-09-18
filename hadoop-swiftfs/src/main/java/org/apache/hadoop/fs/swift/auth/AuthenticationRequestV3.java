@@ -24,13 +24,9 @@ package org.apache.hadoop.fs.swift.auth;
  * THIS FILE IS MAPPED BY JACKSON TO AND FROM JSON.
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
  */
-public class AuthenticationRequest {
+public class AuthenticationRequestV3 extends AuthenticationRequest {
 
-  public AuthenticationRequest() {
+  public AuthenticationRequestV3() {
   }
 
-  @Override
-  public String toString() {
-    return "AuthenticationRequest";
-  }
 }

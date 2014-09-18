@@ -24,7 +24,7 @@ package org.apache.hadoop.fs.swift.auth;
  * THIS FILE IS MAPPED BY JACKSON TO AND FROM JSON.
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
  */
-public class PasswordAuthenticationRequest extends AuthenticationRequest {
+public class PasswordAuthenticationRequest extends AuthenticationRequestV2 {
   /**
    * Credentials for login
    */

@@ -20,6 +20,7 @@ package org.apache.hadoop.fs.swift.http;
 
 import org.apache.commons.httpclient.DefaultHttpMethodRetryHandler;
 import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HeaderElement;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpHost;
 import org.apache.commons.httpclient.HttpMethod;
@@ -40,16 +41,24 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.swift.auth.ApiKeyAuthenticationRequest;
 import org.apache.hadoop.fs.swift.auth.ApiKeyCredentials;
 import org.apache.hadoop.fs.swift.auth.AuthenticationRequest;
+import org.apache.hadoop.fs.swift.auth.AuthenticationRequestV2;
+import org.apache.hadoop.fs.swift.auth.AuthenticationRequestV3;
 import org.apache.hadoop.fs.swift.auth.AuthenticationRequestWrapper;
 import org.apache.hadoop.fs.swift.auth.AuthenticationResponse;
+import org.apache.hadoop.fs.swift.auth.AuthenticationResponseV3;
 import org.apache.hadoop.fs.swift.auth.AuthenticationWrapper;
+import org.apache.hadoop.fs.swift.auth.AuthenticationWrapperV3;
 import org.apache.hadoop.fs.swift.auth.KeyStoneAuthRequest;
 import org.apache.hadoop.fs.swift.auth.KeystoneApiKeyCredentials;
 import org.apache.hadoop.fs.swift.auth.PasswordAuthenticationRequest;
+import org.apache.hadoop.fs.swift.auth.TrustAuthenticationRequest;
 import org.apache.hadoop.fs.swift.auth.PasswordCredentials;
+import org.apache.hadoop.fs.swift.auth.PasswordCredentialsV3;
 import org.apache.hadoop.fs.swift.auth.entities.AccessToken;
 import org.apache.hadoop.fs.swift.auth.entities.Catalog;
+import org.apache.hadoop.fs.swift.auth.entities.CatalogV3;
 import org.apache.hadoop.fs.swift.auth.entities.Endpoint;
+import org.apache.hadoop.fs.swift.auth.entities.EndpointV3;
 import org.apache.hadoop.fs.swift.exceptions.SwiftAuthenticationFailedException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftBadRequestException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
@@ -129,6 +138,16 @@ public final class SwiftRestClient {
    * user password
    */
   private final String password;
+
+  /**
+   * trust id
+   */
+  private final String trust_id;
+
+  /**
+   * user's domain name
+   */
+  private final String domain_name;
 
   /**
    * user api key
@@ -468,6 +487,8 @@ public final class SwiftRestClient {
     String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
     username = getOption(props, SWIFT_USERNAME_PROPERTY);
     password = props.getProperty(SWIFT_PASSWORD_PROPERTY);
+    trust_id = props.getProperty(SWIFT_TRUST_ID_PROPERTY);
+    domain_name = props.getProperty(SWIFT_DOMAIN_NAME_PROPERTY);
     apiKey = props.getProperty(SWIFT_APIKEY_PROPERTY);
     //optional
     region = props.getProperty(SWIFT_REGION_PROPERTY);
@@ -488,10 +509,16 @@ public final class SwiftRestClient {
         }
         //create the (reusable) authentication request
         if (password != null) {
-            authRequest = new PasswordAuthenticationRequest(tenant,
-                    new PasswordCredentials(
-                            username,
-                            password));
+            if (trust_id == null) {
+                authRequest = new PasswordAuthenticationRequest(tenant,
+                        new PasswordCredentials(
+                                username,
+                                password));
+            } else {
+                authRequest = new TrustAuthenticationRequest(
+                        new PasswordCredentialsV3(username, password, domain_name),
+                        trust_id);
+            }
         } else {
             authRequest = new ApiKeyAuthenticationRequest(tenant,
                     new ApiKeyCredentials(
@@ -1170,11 +1197,22 @@ public final class SwiftRestClient {
 
     @Override
     public AccessToken extractResult(AuthPostMethod method) throws IOException {
+
       //initial check for failure codes leading to authentication failures
       if (method.getStatusCode() == SC_BAD_REQUEST) {
         throw new SwiftAuthenticationFailedException(
           authenticationRequest.toString(), "POST", authUri, method);
       }
+
+      if (authenticationRequest instanceof AuthenticationRequestV2) {
+        return extractResultV2(method);
+      } else {
+        return extractResultV3(method);
+      }
+
+    }
+
+    AccessToken extractResultV2(AuthPostMethod method) throws IOException {
 
       final AuthenticationResponse access =
         JSONUtil.toObject(method.getResponseBodyAsString(),
@@ -1268,6 +1306,76 @@ public final class SwiftRestClient {
       }
       createDefaultContainer();
       return accessToken;
+    }
+
+    AccessToken extractResultV3(AuthPostMethod method) throws IOException {
+
+      final AuthenticationResponseV3 response =
+        JSONUtil.toObject(method.getResponseBodyAsString(),
+                          AuthenticationWrapperV3.class).getToken();
+
+      URI endpointURI = null;
+      for (CatalogV3 catalog : response.getCatalog()) {
+        String name = catalog.getName();
+        String type = catalog.getType();
+
+        if (!name.equals(SERVICE_CATALOG_SWIFT)
+            && !name.equals(SERVICE_CATALOG_CLOUD_FILES)
+            && !type.equals(SERVICE_CATALOG_OBJECT_STORE)) {
+          continue;
+        }
+
+        for (EndpointV3 endpoint : catalog.getEndpoints()) {
+          if (region != null && !endpoint.getRegion().equals(region)) {
+            continue;
+          }
+          if ((usePublicURL && "public".equals(endpoint.getInterface()))
+              || (!usePublicURL && "internal".equals(endpoint.getInterface()))) {
+            endpointURI = endpoint.getUrl();
+            break;
+          }
+        }
+      }
+      if (endpointURI == null) {
+        String message = "Could not find swift service from auth URL "
+                         + authUri
+                         + " and region '" + region + "'.";
+        throw new SwiftInvalidResponseException(message,
+                                                SC_OK,
+                                                "authenticating",
+                                                authUri);
+
+      }
+
+      AccessToken token = new AccessToken();
+      final Header token_header = method.getResponseHeader("X-Subject-Token");
+      if (token_header == null) {
+        throw new SwiftException("invalid Keystone response");
+      }
+      token.setId(token_header.getValue());
+      token.setExpires(response.getExpires_at());
+      token.setTenant(response.getProject());
+
+      URI objectLocation = null;
+      String path = getAuthEndpointPrefix() + token.getTenant().getId();
+      try {
+        objectLocation = new URI(endpointURI.getScheme(),
+                                 null,
+                                 endpointURI.getHost(),
+                                 endpointURI.getPort(),
+                                 path,
+                                 null,
+                                 null);
+      } catch (URISyntaxException e) {
+        throw new SwiftException("object endpoint URI is incorrect: "
+                                 + endpointURI
+                                 + " + " + path,
+                                 e);
+      }
+
+      setAuthDetails(endpointURI, objectLocation, token);
+      createDefaultContainer();
+      return token;
     }
   }
 
