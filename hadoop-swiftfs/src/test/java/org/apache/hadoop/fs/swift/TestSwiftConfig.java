@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
+
 import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.DOT_AUTH_URL;
 import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.DOT_LOCATION_AWARE;
 import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.DOT_PASSWORD;
@@ -91,18 +93,34 @@ public class TestSwiftConfig extends Assert {
     mkInstance(configuration);
   }
 
-  @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException.class)
+  @Test
   public void testBadRetryCount() throws Exception {
     final Configuration configuration = createCoreConfig();
     configuration.set(SWIFT_RETRY_COUNT, "three");
-    mkInstance(configuration);
+    try {
+      mkInstance(configuration);
+    } catch (SwiftConfigurationException e) {
+      if (TestUtils.isHadoop1())
+        Assert.fail();
+      return;
+    }
+    if (!TestUtils.isHadoop1())
+      Assert.fail();
   }
 
-  @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException.class)
+  @Test
   public void testBadConnectTimeout() throws Exception {
     final Configuration configuration = createCoreConfig();
     configuration.set(SWIFT_CONNECTION_TIMEOUT, "three");
-    mkInstance(configuration);
+    try {
+      mkInstance(configuration);
+    } catch (SwiftConfigurationException e) {
+      if (TestUtils.isHadoop1())
+        Assert.fail();
+      return;
+    }
+    if (!TestUtils.isHadoop1())
+      Assert.fail();
   }
 
   @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException.class)
