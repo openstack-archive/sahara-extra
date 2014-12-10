@@ -59,29 +59,6 @@ public final class SwiftUtils {
   }
 
   /**
-   * This test contains the is-directory logic for Swift, so if
-   * changed there is only one place for it.
-   *
-   * @param fileStatus status to examine
-   * @return true if we consider this status to be representative of a
-   *         directory.
-   */
-  public static boolean isDirectory(FileStatus fileStatus) {
-    return fileStatus.isDir() || isFilePretendingToBeDirectory(fileStatus);
-  }
-
-  /**
-   * Test for the entry being a file that is treated as if it is a
-   * directory
-   *
-   * @param fileStatus status
-   * @return true if it meets the rules for being a directory
-   */
-  public static boolean isFilePretendingToBeDirectory(FileStatus fileStatus) {
-    return fileStatus.getLen() == 0;
-  }
-
-  /**
    * Predicate: Is a swift object referring to the root direcory?
    * @param swiftObject object to probe
    * @return true iff the object refers to the root
