@@ -26,7 +26,7 @@ import java.util.Date;
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
  */
 
-class SwiftObjectFileStatus {
+public class SwiftObjectFileStatus {
   private long bytes;
   private String content_type;
   private String hash;

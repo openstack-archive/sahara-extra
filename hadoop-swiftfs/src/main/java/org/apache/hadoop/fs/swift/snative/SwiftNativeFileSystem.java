@@ -200,27 +200,6 @@ public class SwiftNativeFileSystem extends FileSystem {
     return store.getBlocksize();
   }
 
-  @Override
-  public boolean isFile(Path f) throws IOException {
-    try {
-      FileStatus fileStatus = getFileStatus(f);
-      return !SwiftUtils.isDirectory(fileStatus);
-    } catch (FileNotFoundException e) {
-      return false;               // f does not exist
-    }
-  }
-
-  @Override
-  public boolean isDirectory(Path f) throws IOException {
-
-    try {
-      FileStatus fileStatus = getFileStatus(f);
-      return SwiftUtils.isDirectory(fileStatus);
-    } catch (FileNotFoundException e) {
-      return false;               // f does not exist
-    }
-  }
-
   /**
    * Return an array containing hostnames, offset and size of
    * portions of the given file.  For a nonexistent
@@ -239,6 +218,9 @@ public class SwiftNativeFileSystem extends FileSystem {
     if (file == null) {
       return null;
     }
+    if (file.isDir()) {
+      return new BlockLocation[0];
+    }
 
     if (start < 0 || len < 0) {
       throw new IllegalArgumentException("Negative start or len parameter" +
@@ -251,11 +233,15 @@ public class SwiftNativeFileSystem extends FileSystem {
     // Check if requested file in Swift is more than 5Gb. In this case
     // each block has its own location -which may be determinable
     // from the Swift client API, depending on the remote server
-    final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath(),
-                                                             false,
-                                                             true);
+    final FileStatus[] listOfFileBlocks;
+    if (file instanceof SwiftFileStatus && ((SwiftFileStatus)file).isDLO()) {
+      listOfFileBlocks = store.listSegments((SwiftFileStatus)file, true);
+    } else {
+      listOfFileBlocks = null;
+    }
+
     List<URI> locations = new ArrayList<URI>();
-    if (listOfFileBlocks.length > 1) {
+    if (listOfFileBlocks != null && listOfFileBlocks.length > 1) {
       for (FileStatus fileStatus : listOfFileBlocks) {
         if (SwiftObjectPath.fromPath(uri, fileStatus.getPath())
                 .equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
@@ -386,7 +372,7 @@ public class SwiftNativeFileSystem extends FileSystem {
       //find out about the path
       fileStatus = getFileStatus(directory);
 
-      if (!SwiftUtils.isDirectory(fileStatus)) {
+      if (!fileStatus.isDir()) {
         //if it's a file, raise an error
         throw new SwiftNotDirectoryException(directory,
                 String.format(": can't mkdir since it exists and is not a directory: %s",
@@ -433,7 +419,15 @@ public class SwiftNativeFileSystem extends FileSystem {
     if (LOG.isDebugEnabled()) {
       LOG.debug("SwiftFileSystem.listStatus for: " + path);
     }
-    return store.listSubPaths(makeAbsolute(path), false, true);
+    Path absolutePath = makeAbsolute(path);
+    try {
+      return store.listSubPaths(absolutePath, false, true);
+    } catch (FileNotFoundException e) {
+      /* path is not directory. try to get file status */
+      return new FileStatus[] {
+          getFileStatus(absolutePath)
+      };
+    }
   }
 
   /**

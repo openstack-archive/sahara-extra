@@ -210,15 +210,38 @@ public class SwiftNativeFileSystemStore {
     throws IOException, FileNotFoundException {
 
     SwiftObjectPath objectPath = toObjectPath(path);
-    final Header[] headers = stat(objectPath, newest);
-    //no headers is treated as a missing file
-    if (headers.length == 0) {
+
+    // remove trailing slash because FileStatus must not include that
+    Path statusPath = path;
+    if (statusPath.toUri().toString().endsWith("/")) {
+      String pathUri = statusPath.toUri().toString();
+      if (pathUri.length() > 1)
+        statusPath = new Path(pathUri.substring(0, pathUri.length() - 1));
+    }
+
+    Header[] headers = null;
+    try {
+      headers = stat(objectPath, newest);
+    } catch (FileNotFoundException e) {
+      // if path is pseudo-directory, ignore FileNotFoundException.
+    }
+    //no headers is treated as a missing file or pseudo-directory
+    if (headers == null || headers.length == 0) {
+      if (existsPseudoDirectory(objectPath)) {
+        return new SwiftFileStatus(0,
+                                   true,
+                                   1,
+                                   getBlocksize(),
+                                   System.currentTimeMillis(),
+                                   getCorrectSwiftPath(statusPath));
+      }
       throw new FileNotFoundException("Not Found " + path.toUri());
     }
 
     boolean isDir = false;
     long length = 0;
     long lastModified = 0 ;
+    SwiftObjectPath dloPrefix = null;
     for (Header header : headers) {
       String headerName = header.getName();
       if (headerName.equals(SwiftProtocolConstants.X_CONTAINER_OBJECT_COUNT) ||
@@ -237,18 +260,28 @@ public class SwiftNativeFileSystemStore {
           throw new SwiftException("Failed to parse " + header.toString(), e);
         }
       }
+      if (headerName.equals(SwiftProtocolConstants.X_OBJECT_MANIFEST)) {
+        String[] values = header.getValue().split("/", 2);
+        if (values.length == 2) {
+          dloPrefix = new SwiftObjectPath(values[0], "/" + values[1]);
+        }
+      }
     }
     if (lastModified == 0) {
       lastModified = System.currentTimeMillis();
     }
+    if (objectPath.toString().endsWith("/")) {
+      isDir = true;
+    }
 
-    Path correctSwiftPath = getCorrectSwiftPath(path);
+    Path correctSwiftPath = getCorrectSwiftPath(statusPath);
     return new SwiftFileStatus(length,
                                isDir,
                                1,
                                getBlocksize(),
                                lastModified,
-                               correctSwiftPath);
+                               correctSwiftPath,
+                               dloPrefix);
   }
 
   private Header[] stat(SwiftObjectPath objectPath, boolean newest) throws
@@ -262,6 +295,39 @@ public class SwiftNativeFileSystemStore {
                                             objectPath);
     }
     return headers;
+  }
+
+  private boolean existsPseudoDirectory(SwiftObjectPath path) {
+    try {
+      String pseudoDirName = path.getObject();
+      if (pseudoDirName.endsWith("/")) {
+        String obj = path.getObject();
+        path = new SwiftObjectPath(path.getContainer(),
+                                   obj.substring(0, obj.length() - 1));
+      } else {
+        pseudoDirName = pseudoDirName.concat("/");
+      }
+
+      final byte[] bytes;
+      bytes = swiftRestClient.listDeepObjectsInDirectory(path, false, false);
+
+      final CollectionType collectionType = JSONUtil.getJsonMapper().
+        getTypeFactory().constructCollectionType(List.class,
+                                                 SwiftObjectFileStatus.class);
+
+      final List<SwiftObjectFileStatus> fileStatusList =
+        JSONUtil.toObject(new String(bytes), collectionType);
+
+      for (SwiftObjectFileStatus status : fileStatusList) {
+        if (pseudoDirName.equals(status.getSubdir())) {
+          return true;
+        }
+      }
+      return false;
+
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   /**
@@ -401,18 +467,22 @@ public class SwiftNativeFileSystemStore {
    * @param path working path
    * @param listDeep ask for all the data
    * @param newest ask for the newest data
+   * @param addTrailingSlash should a trailing slash be added if there isn't one
    * @return Collection of file statuses
    * @throws IOException IO problems
    * @throws FileNotFoundException if the path does not exist
    */
   private List<FileStatus> listDirectory(SwiftObjectPath path,
                                          boolean listDeep,
-                                         boolean newest) throws IOException {
+                                         boolean newest,
+                                         boolean addTrailingSlash)
+      throws IOException {
     final byte[] bytes;
     final ArrayList<FileStatus> files = new ArrayList<FileStatus>();
     final Path correctSwiftPath = getCorrectSwiftPath(path);
     try {
-      bytes = swiftRestClient.listDeepObjectsInDirectory(path, listDeep);
+      bytes = swiftRestClient.listDeepObjectsInDirectory(path, listDeep,
+                                                         addTrailingSlash);
     } catch (FileNotFoundException e) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("" +
@@ -468,14 +538,25 @@ public class SwiftNativeFileSystemStore {
       return files;
     }
 
+    String pathWithSlash = path.getObject();
+    if (!pathWithSlash.endsWith("/")) {
+      pathWithSlash = pathWithSlash.concat("/");
+    }
     for (SwiftObjectFileStatus status : fileStatusList) {
-      if (status.getName() != null) {
-          files.add(new SwiftFileStatus(status.getBytes(),
-                  status.getBytes() == 0,
-                  1,
-                  getBlocksize(),
-                  status.getLast_modified().getTime(),
-                  getCorrectSwiftPath(new Path(status.getName()))));
+      String name = status.getName();
+      if (name == null) {
+        name = status.getSubdir();
+      }
+      if (name == null || name.equals(pathWithSlash)) {
+        continue;
+      }
+
+      if (!name.endsWith("/")) {
+        final Path filePath = getCorrectSwiftPath(new Path(name));
+        files.add(getObjectMetadata(filePath, newest));
+      } else {
+        final Path dirPath = getCorrectSwiftPath(toDirPath(new Path(name)));
+        files.add(getObjectMetadata(dirPath, newest));
       }
     }
 
@@ -498,7 +579,7 @@ public class SwiftNativeFileSystemStore {
                                    boolean recursive,
                                    boolean newest) throws IOException {
     final Collection<FileStatus> fileStatuses;
-    fileStatuses = listDirectory(toDirPath(path), recursive, newest);
+    fileStatuses = listDirectory(toDirPath(path), recursive, newest, true);
     return fileStatuses.toArray(new FileStatus[fileStatuses.size()]);
   }
 
@@ -527,7 +608,7 @@ public class SwiftNativeFileSystemStore {
 
   private SwiftObjectPath toDirPath(Path path) throws
           SwiftConfigurationException {
-    return SwiftObjectPath.fromPath(uri, path, false);
+    return SwiftObjectPath.fromPath(uri, path, true);
   }
 
   private SwiftObjectPath toObjectPath(Path path) throws
@@ -554,12 +635,17 @@ public class SwiftNativeFileSystemStore {
   /**
    * deletes object from Swift
    *
-   * @param path path to delete
+   * @param status FileStatus to delete
    * @return true if the path was deleted by this specific operation.
    * @throws IOException on a failure
    */
-  public boolean deleteObject(Path path) throws IOException {
-    SwiftObjectPath swiftObjectPath = toObjectPath(path);
+  public boolean deleteObject(FileStatus status) throws IOException {
+    SwiftObjectPath swiftObjectPath;
+    if (status.isDir()) {
+      swiftObjectPath = toDirPath(status.getPath());
+    } else {
+      swiftObjectPath = toObjectPath(status.getPath());
+    }
     if (!SwiftUtils.isRootDir(swiftObjectPath)) {
       return swiftRestClient.delete(swiftObjectPath);
     } else {
@@ -568,18 +654,6 @@ public class SwiftNativeFileSystemStore {
       }
       return true;
     }
-  }
-
-  /**
-   * deletes a directory from Swift. This is not recursive
-   *
-   * @param path path to delete
-   * @return true if the path was deleted by this specific operation -or
-   *         the path was root and not acted on.
-   * @throws IOException on a failure
-   */
-  public boolean rmdir(Path path) throws IOException {
-    return deleteObject(path);
   }
 
   /**
@@ -635,22 +709,32 @@ public class SwiftNativeFileSystemStore {
     }
     boolean renamingOnToSelf = src.equals(dst);
 
-    SwiftObjectPath srcObject = toObjectPath(src);
-    SwiftObjectPath destObject = toObjectPath(dst);
-
+    final SwiftFileStatus srcMetadata;
+    srcMetadata = getObjectMetadata(src);
+    SwiftObjectPath srcObject;
+    if (srcMetadata.isDirectory()) {
+      srcObject = toDirPath(src);
+    } else {
+      srcObject = toObjectPath(src);
+    }
     if (SwiftUtils.isRootDir(srcObject)) {
       throw new SwiftOperationFailedException("cannot rename root dir");
     }
 
-    final SwiftFileStatus srcMetadata;
-    srcMetadata = getObjectMetadata(src);
     SwiftFileStatus dstMetadata;
+    SwiftObjectPath destObject;
     try {
       dstMetadata = getObjectMetadata(dst);
+      if (dstMetadata.isDirectory()) {
+        destObject = toDirPath(dst);
+      } else {
+        destObject = toObjectPath(dst);
+      }
     } catch (FileNotFoundException e) {
       //destination does not exist.
       LOG.debug("Destination does not exist");
       dstMetadata = null;
+      destObject = toObjectPath(dst);
     }
 
     //check to see if the destination parent directory exists
@@ -670,13 +754,13 @@ public class SwiftNativeFileSystemStore {
     }
 
     boolean destExists = dstMetadata != null;
-    boolean destIsDir = destExists && SwiftUtils.isDirectory(dstMetadata);
+    boolean destIsDir = destExists && dstMetadata.isDirectory();
     //calculate the destination
     SwiftObjectPath destPath;
 
     //enum the child entries and everything underneath
-    List<FileStatus> childStats = listDirectory(srcObject, true, true);
-    boolean srcIsFile = !srcMetadata.isDir();
+    List<FileStatus> childStats = listDirectory(srcObject, true, true, true);
+    boolean srcIsFile = !srcMetadata.isDirectory();
     if (srcIsFile) {
 
       //source is a simple file OR a partitioned file
@@ -718,7 +802,7 @@ public class SwiftNativeFileSystemStore {
         copyObject(srcObject, destPath);
         for (FileStatus stat : childStats) {
           SwiftUtils.debug(LOG, "Deleting partitioned file %s ", stat);
-          deleteObject(stat.getPath());
+          deleteObject(stat);
         }
 
         swiftRestClient.delete(srcObject);
@@ -746,7 +830,7 @@ public class SwiftNativeFileSystemStore {
         // #3 destination doesn't exist: create a new dir with that name
         targetPath = dst;
       }
-      SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
+      SwiftObjectPath targetObjectPath = toDirPath(targetPath);
       //final check for any recursive operations
       if (srcObject.isEqualToOrParentOf(targetObjectPath)) {
         //you can't rename a directory onto itself
@@ -780,11 +864,19 @@ public class SwiftNativeFileSystemStore {
                   + "; copyDestSubPath=" + copyDestSubPath
                   + "; copyDestPath=" + copyDestPath);
         }
-        SwiftObjectPath copyDestination = toObjectPath(copyDestPath);
+        SwiftObjectPath copySource;
+        SwiftObjectPath copyDestination;
+
+        if (fileStatus.isDir()) {
+          copySource = toDirPath(copySourcePath);
+          copyDestination = toDirPath(copyDestPath);
+        } else {
+          copySource = toObjectPath(copySourcePath);
+          copyDestination = toObjectPath(copyDestPath);
+        }
 
         try {
-          copyThenDeleteObject(toObjectPath(copySourcePath),
-                  copyDestination);
+          copyThenDeleteObject(copySource, copyDestination);
         } catch (FileNotFoundException e) {
           LOG.info("Skipping rename of " + copySourcePath);
         }
@@ -1008,14 +1100,12 @@ public class SwiftNativeFileSystemStore {
     //don't mind if the directory has changed
     //list all entries under this directory.
     //this will throw FileNotFoundException if the file isn't there
-    FileStatus[] statuses = listSubPaths(absolutePath, true, askForNewest);
-    if (statuses == null) {
-      //the directory went away during the non-atomic stages of the operation.
-      // Return false as it was not this thread doing the deletion.
-      SwiftUtils.debug(LOG, "Path '%s' has no status -it has 'gone away'",
-                       absolutePath,
-                       recursive);
-      return false;
+    FileStatus[] statuses;
+    try {
+      statuses = listSubPaths(absolutePath, true, askForNewest);
+    } catch (IOException e) {
+      // absolutePath is nonexistent
+      statuses = new FileStatus[0];
     }
     int filecount = statuses.length;
     SwiftUtils.debug(LOG, "Path '%s' %d status entries'",
@@ -1024,7 +1114,7 @@ public class SwiftNativeFileSystemStore {
 
     if (filecount == 0) {
       //it's an empty directory or a path
-      rmdir(absolutePath);
+      deleteObject(fileStatus);
       return true;
     }
 
@@ -1036,14 +1126,14 @@ public class SwiftNativeFileSystemStore {
       // 1 entry => simple file and it is the target
       //simple file: delete it
       SwiftUtils.debug(LOG, "Deleting simple file %s", absolutePath);
-      deleteObject(absolutePath);
+      deleteObject(fileStatus);
       return true;
     }
 
     //>1 entry implies directory with children. Run through them,
     // but first check for the recursive flag and reject it *unless it looks
     // like a partitioned file (len > 0 && has children)
-    if (!fileStatus.isDir()) {
+    if (!fileStatus.isDirectory()) {
       LOG.debug("Multiple child entries but entry has data: assume partitioned");
     } else if (!recursive) {
       //if there are children, unless this is a recursive operation, fail immediately
@@ -1057,7 +1147,7 @@ public class SwiftNativeFileSystemStore {
     for (FileStatus entryStatus : statuses) {
       Path entryPath = entryStatus.getPath();
       try {
-        boolean deleted = deleteObject(entryPath);
+        boolean deleted = deleteObject(entryStatus);
         if (!deleted) {
           SwiftUtils.debug(LOG, "Failed to delete entry '%s'; continuing",
                            entryPath);
@@ -1072,8 +1162,38 @@ public class SwiftNativeFileSystemStore {
     }
     //now delete self
     SwiftUtils.debug(LOG, "Deleting base entry %s", absolutePath);
-    deleteObject(absolutePath);
+    deleteObject(fileStatus);
 
     return true;
+  }
+
+  /**
+   * List all segments in dynamic large object.
+   *
+   * @param file   SwiftFileStatus of large object
+   * @param newest ask for the newest, or can some out of date data work?
+   * @return the file statuses, or an empty array if there are no segments
+   * @throws IOException           on IO problems
+   */
+  public FileStatus[] listSegments(SwiftFileStatus file, boolean newest)
+      throws IOException {
+
+    if (file.getDLOPrefix() == null) {
+      return new FileStatus[0];
+    }
+
+    final List<FileStatus> objects;
+    objects = listDirectory(file.getDLOPrefix(), true, newest, false);
+
+    final ArrayList<FileStatus> segments;
+    segments = new ArrayList<FileStatus>(objects.size());
+
+    for (FileStatus status : objects) {
+      if (!status.isDir()) {
+        segments.add(status);
+      }
+    }
+
+    return segments.toArray(new FileStatus[segments.size()]);
   }
 }

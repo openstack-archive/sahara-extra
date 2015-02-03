@@ -20,11 +20,21 @@ package org.apache.hadoop.fs.swift;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.http.SwiftRestClient;
 import org.apache.hadoop.fs.swift.snative.SwiftFileStatus;
+import org.apache.hadoop.fs.swift.snative.SwiftObjectFileStatus;
+import org.apache.hadoop.fs.swift.util.JSONUtil;
+import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
+import org.codehaus.jackson.map.type.CollectionType;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.cleanup;
 
 /**
  * Test swift-specific directory logic.
@@ -35,16 +45,16 @@ public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
 
   /**
    * Asserts that a zero byte file has a status of file and not
-   * directory or symlink
+   * file or symlink
    *
    * @throws Exception on failures
    */
   @Test(timeout = SWIFT_TEST_TIMEOUT)
-  public void testZeroByteFilesAreDirectories() throws Exception {
+  public void testZeroByteFilesAreFiles() throws Exception {
     Path src = path("/test/testZeroByteFilesAreFiles");
     //create a zero byte file
     SwiftTestUtils.touch(fs, src);
-    SwiftTestUtils.assertIsDirectory(fs, src);
+    SwiftTestUtils.assertIsFile(fs, src);
   }
 
   @Test(timeout = SWIFT_TEST_TIMEOUT)
@@ -79,8 +89,8 @@ public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
 
     Path src = path("/test/file");
 
-    //create a zero byte file
-    SwiftTestUtils.touch(fs, src);
+    //create a directory
+    fs.mkdirs(src);
     //stat it
     statuses = fs.listStatus(test);
     statusString = statusToString(test.toString(), statuses);
@@ -138,4 +148,45 @@ public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
     assertFalse(status.isDir());
   }
 
+  /**
+   * Asserts that a mkdir with trailing slash makes single object only
+   *
+   * @throws Exception on failures
+   */
+  @Test(timeout = SWIFT_TEST_TIMEOUT)
+  public void testDirectoriesUseURI() throws Exception {
+    cleanup("testDirectoriesUseURI", fs, "/");
+    Path test = new Path(fs.getUri().resolve("/test/"));
+    mkdirs(test);
+    assertExists("created test directory", test);
+    FileStatus[] statuses = fs.listStatus(test);
+    String statusString = statusToString(test.toString(), statuses);
+    assertEquals("Wrong number of elements in file status " + statusString, 0,
+                 statuses.length);
+
+    String[] objects = getRawObjectNames();
+    assertEquals("Wrong number of objects in swift", 1, objects.length);
+    assertEquals("Wrong directory name", "/test/", objects[0]);
+  }
+
+  private String[] getRawObjectNames() throws Exception {
+    SwiftRestClient client;
+    client = SwiftRestClient.getInstance(fs.getUri(), fs.getConf());
+    SwiftObjectPath path = SwiftObjectPath.fromPath(fs.getUri(), new Path("/"));
+    byte[] bytes = client.listDeepObjectsInDirectory(path, true, true);
+    final CollectionType collectionType = JSONUtil.getJsonMapper().
+      getTypeFactory().constructCollectionType(List.class,
+                                               SwiftObjectFileStatus.class);
+    final List<SwiftObjectFileStatus> fileStatusList =
+      JSONUtil.toObject(new String(bytes), collectionType);
+    final ArrayList<String> objects = new ArrayList();
+    for (SwiftObjectFileStatus status : fileStatusList) {
+      if (status.getName() != null) {
+        objects.add(status.getName());
+      } else if (status.getSubdir() != null) {
+        objects.add(status.getSubdir());
+      }
+    }
+    return objects.toArray(new String[objects.size()]);
+  }
 }

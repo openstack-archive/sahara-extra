@@ -899,6 +899,7 @@ public final class SwiftRestClient {
    * Find objects in a directory
    *
    * @param path path prefix
+   * @param addTrailingSlash should a trailing slash be added if there isn't one
    * @param requestHeaders optional request headers
    * @return byte[] file data or null if the object was not found
    * @throws IOException on IO Faults
@@ -907,6 +908,7 @@ public final class SwiftRestClient {
    */
   public byte[] listDeepObjectsInDirectory(SwiftObjectPath path,
                                            boolean listDeep,
+                                           boolean addTrailingSlash,
                                        final Header... requestHeaders)
           throws IOException {
     preRemoteCommand("listDeepObjectsInDirectory");
@@ -918,7 +920,7 @@ public final class SwiftRestClient {
     if (object.startsWith("/")) {
       object = object.substring(1);
     }
-    if (!object.endsWith("/")) {
+    if (addTrailingSlash && !object.endsWith("/")) {
       object = object.concat("/");
     }
 

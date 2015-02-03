@@ -286,4 +286,10 @@ public class TestSwiftFileSystemBasicOps extends SwiftFileSystemBaseTest {
     }
   }
 
+  @Test(timeout = SWIFT_TEST_TIMEOUT)
+  public void testExistsRoot() throws Exception {
+    Path path = new Path("/");
+    assertTrue("exists('/') returned false", fs.exists(path));
+  }
+
 }

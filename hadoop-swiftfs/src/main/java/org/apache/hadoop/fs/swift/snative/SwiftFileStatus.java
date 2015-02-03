@@ -21,12 +21,15 @@ package org.apache.hadoop.fs.swift.snative;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 
 /**
  * A subclass of {@link FileStatus} that contains the
- * Swift-specific rules of when a file is considered to be a directory.
+ * Swift-specific meta-data (e.g. DLO)
  */
 public class SwiftFileStatus extends FileStatus {
+
+  private SwiftObjectPath dloPrefix = null;
 
   public SwiftFileStatus() {
   }
@@ -35,7 +38,17 @@ public class SwiftFileStatus extends FileStatus {
                          boolean isdir,
                          int block_replication,
                          long blocksize, long modification_time, Path path) {
+    this(length, isdir, block_replication, blocksize, modification_time,
+            path, null);
+  }
+
+  public SwiftFileStatus(long length,
+                         boolean isdir,
+                         int block_replication,
+                         long blocksize, long modification_time, Path path,
+                         SwiftObjectPath dloPrefix) {
     super(length, isdir, block_replication, blocksize, modification_time, path);
+    this.dloPrefix = dloPrefix;
   }
 
   public SwiftFileStatus(long length,
@@ -48,17 +61,6 @@ public class SwiftFileStatus extends FileStatus {
                          String owner, String group, Path path) {
     super(length, isdir, block_replication, blocksize, modification_time,
             access_time, permission, owner, group, path);
-  }
-
-  /**
-   * Declare that the path represents a directory, which in the
-   * SwiftNativeFileSystem means "is a directory or a 0 byte file"
-   *
-   * @return true if the status is considered to be a file
-   */
-  @Override
-  public boolean isDir() {
-    return super.isDir() || getLen() == 0;
   }
 
   /**
@@ -79,13 +81,21 @@ public class SwiftFileStatus extends FileStatus {
     return isDir();
   }
 
+  public boolean isDLO() {
+    return dloPrefix != null;
+  }
+
+  public SwiftObjectPath getDLOPrefix() {
+    return dloPrefix;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append(getClass().getSimpleName());
     sb.append("{ ");
     sb.append("path=").append(getPath());
-    sb.append("; isDirectory=").append(isDir());
+    sb.append("; isDirectory=").append(isDirectory());
     sb.append("; length=").append(getLen());
     sb.append("; blocksize=").append(getBlockSize());
     sb.append("; modification_time=").append(getModificationTime());
