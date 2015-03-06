@@ -758,8 +758,6 @@ public class SwiftNativeFileSystemStore {
     //calculate the destination
     SwiftObjectPath destPath;
 
-    //enum the child entries and everything underneath
-    List<FileStatus> childStats = listDirectory(srcObject, true, true, true);
     boolean srcIsFile = !srcMetadata.isDirectory();
     if (srcIsFile) {
 
@@ -788,25 +786,8 @@ public class SwiftNativeFileSystemStore {
         //outcome #3 -new entry
         destPath = toObjectPath(dst);
       }
-      int childCount = childStats.size();
-      //here there is one of:
-      // - a single object ==> standard file
-      // ->
-      if (childCount == 0) {
-        copyThenDeleteObject(srcObject, destPath);
-      } else {
-        //do the copy
-        SwiftUtils.debug(LOG, "Source file appears to be partitioned." +
-                              " copying file and deleting children");
 
-        copyObject(srcObject, destPath);
-        for (FileStatus stat : childStats) {
-          SwiftUtils.debug(LOG, "Deleting partitioned file %s ", stat);
-          deleteObject(stat);
-        }
-
-        swiftRestClient.delete(srcObject);
-      }
+      copyThenDeleteObject(srcObject, srcMetadata, destPath);
     } else {
 
       //here the source exists and is a directory
@@ -841,6 +822,8 @@ public class SwiftNativeFileSystemStore {
 
       LOG.info("mv  " + srcObject + " " + targetPath);
 
+      //enum the child entries and everything underneath
+      List<FileStatus> childStats = listDirectory(srcObject, true, true, true);
       logDirectory("Directory to copy ", srcObject, childStats);
 
       // iterative copy of everything under the directory.
@@ -876,7 +859,8 @@ public class SwiftNativeFileSystemStore {
         }
 
         try {
-          copyThenDeleteObject(copySource, copyDestination);
+          copyThenDeleteObject(copySource, (SwiftFileStatus)fileStatus,
+                               copyDestination);
         } catch (FileNotFoundException e) {
           LOG.info("Skipping rename of " + copySourcePath);
         }
@@ -886,8 +870,7 @@ public class SwiftNativeFileSystemStore {
       //now rename self. If missing, create the dest directory and warn
       if (!SwiftUtils.isRootDir(srcObject)) {
         try {
-          copyThenDeleteObject(srcObject,
-                  targetObjectPath);
+          copyThenDeleteObject(srcObject, srcMetadata, targetObjectPath);
         } catch (FileNotFoundException e) {
           //create the destination directory
           LOG.warn("Source directory deleted during rename", e);
@@ -915,13 +898,6 @@ public class SwiftNativeFileSystemStore {
     }
   }
 
-  public void copy(Path srcKey, Path dstKey) throws IOException {
-    SwiftObjectPath srcObject = toObjectPath(srcKey);
-    SwiftObjectPath destObject = toObjectPath(dstKey);
-    swiftRestClient.copyObject(srcObject, destObject);
-  }
-
-
   /**
    * Copy an object then, if the copy worked, delete it.
    * If the copy failed, the source object is not deleted.
@@ -932,33 +908,74 @@ public class SwiftNativeFileSystemStore {
 
    */
   private void copyThenDeleteObject(SwiftObjectPath srcObject,
+                                    SwiftFileStatus srcMeta,
                                     SwiftObjectPath destObject) throws
           IOException {
 
-
     //do the copy
-    copyObject(srcObject, destObject);
-    //getting here means the copy worked
-    swiftRestClient.delete(srcObject);
+    copyObject(srcObject, srcMeta, destObject, true);
   }
   /**
    * Copy an object
    * @param srcObject  source object path
+   * @param srcMeta    source object status
    * @param destObject destination object path
+   * @param deleteSrc  if true and the copy worked, delete source object
    * @throws IOException IO problems
    */
   private void copyObject(SwiftObjectPath srcObject,
-                                    SwiftObjectPath destObject) throws
+                          SwiftFileStatus srcMeta,
+                          SwiftObjectPath destObject,
+                          boolean deleteSrc) throws
           IOException {
     if (srcObject.isEqualToOrParentOf(destObject)) {
       throw new SwiftException(
         "Can't copy " + srcObject + " onto " + destObject);
     }
-    //do the copy
-    boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
-    if (!copySucceeded) {
-      throw new SwiftException("Copy of " + srcObject + " to "
-              + destObject + "failed");
+    if (srcMeta.isDLO()) {
+      Path newPrefixPath = getCorrectSwiftPath(destObject);
+      String newPrefixName = newPrefixPath.toUri().getPath();
+      if (!newPrefixName.endsWith("/")) {
+        newPrefixName = newPrefixName.concat("/");
+      }
+      String oldPrefixName = srcMeta.getDLOPrefix().getObject();
+      List<FileStatus> segments = listDirectory(srcMeta.getDLOPrefix(),
+                                                true, true, true);
+      createManifestForPartUpload(newPrefixPath);
+      for (FileStatus s : segments) {
+        if (s.getLen() == 0) {
+          continue;
+        }
+        String oldName = s.getPath().toUri().getPath();
+        String newName = newPrefixName
+          + oldName.substring(oldPrefixName.length());
+        SwiftObjectPath srcSeg = new SwiftObjectPath(srcObject.getContainer(),
+                                                     oldName);
+        SwiftObjectPath destSeg = new SwiftObjectPath(destObject.getContainer(),
+                                                      newName);
+        if (!swiftRestClient.copyObject(srcSeg, destSeg)) {
+          throw new SwiftException("Copy of " + srcSeg + " to "
+                                 + destSeg + "failed");
+        }
+      }
+      if (deleteSrc) {
+        for (FileStatus s : segments) {
+          SwiftObjectPath srcSeg =
+            new SwiftObjectPath(srcObject.getContainer(),
+                                s.getPath().toUri().getPath());
+          swiftRestClient.delete(srcSeg);
+        }
+      }
+    } else {
+      //do the copy
+      boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
+      if (!copySucceeded) {
+        throw new SwiftException("Copy of " + srcObject + " to "
+                                 + destObject + "failed");
+      }
+    }
+    if (deleteSrc) {
+      swiftRestClient.delete(srcObject);
     }
   }
 
