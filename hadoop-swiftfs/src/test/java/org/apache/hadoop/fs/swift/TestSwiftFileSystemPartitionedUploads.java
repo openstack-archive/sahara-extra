@@ -439,4 +439,40 @@ public class TestSwiftFileSystemPartitionedUploads extends
   }
 
 
+  /**
+   * Test writes partitioned file writing that path is qualified.
+   * @throws Throwable
+   */
+  @Test(timeout = SWIFT_BULK_IO_TEST_TIMEOUT)
+  public void testQualifiedPath() throws Throwable {
+    final Path path = path("/test/qualifiedPath");
+    int len = PART_SIZE_BYTES * 4;
+    final byte[] src = SwiftTestUtils.dataset(len, 32, 144);
+    FSDataOutputStream out = fs.create(path,
+                                       false,
+                                       getBufferSize(),
+                                       (short) 1,
+                                       BLOCK_SIZE);
+
+    out.write(src, 0, src.length);
+    int expected =
+      getExpectedPartitionsWritten(len, PART_SIZE_BYTES, true);
+    out.close();
+    assertPartitionsWritten("write completed", out, expected);
+    assertEquals("too few bytes written", len,
+                 SwiftNativeFileSystem.getBytesWritten(out));
+    assertEquals("too few bytes uploaded", len,
+                 SwiftNativeFileSystem.getBytesUploaded(out));
+    //now we verify that the data comes back. If it
+    //doesn't, it means that the ordering of the partitions
+    //isn't right
+    byte[] dest = readDataset(fs, path, len);
+    //compare data
+    SwiftTestUtils.compareByteArrays(src, dest, len);
+    //finally, check the data
+    FileStatus[] stats = fs.listStatus(path);
+    assertEquals("wrong entry count in "
+                 + SwiftTestUtils.dumpStats(path.toString(), stats),
+                 expected, stats.length);
+  }
 }

@@ -133,7 +133,7 @@ public class SwiftNativeFileSystemStore {
                              InputStream inputStream, long length)
           throws IOException {
 
-    String stringPath = path.toUri().toString();
+    String stringPath = path.toUri().getPath();
     String partitionFilename = SwiftUtils.partitionFilenameFromNumber(
       partNumber);
     if (stringPath.endsWith("/")) {
