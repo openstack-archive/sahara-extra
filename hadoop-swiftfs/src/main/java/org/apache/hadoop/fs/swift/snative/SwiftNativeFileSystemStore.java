@@ -223,17 +223,19 @@ public class SwiftNativeFileSystemStore {
     try {
       headers = stat(objectPath, newest);
     } catch (FileNotFoundException e) {
-      // if path is pseudo-directory, ignore FileNotFoundException.
+      try {
+        // retry stat for direcotry file
+        objectPath = toDirPath(path);
+        headers = stat(objectPath, newest);
+      } catch (FileNotFoundException ex) {
+        // if path is pseudo-directory, ignore FileNotFoundException.
+      }
     }
     //no headers is treated as a missing file or pseudo-directory
     if (headers == null || headers.length == 0) {
       if (existsPseudoDirectory(objectPath)) {
-        return new SwiftFileStatus(0,
-                                   true,
-                                   1,
-                                   getBlocksize(),
-                                   System.currentTimeMillis(),
-                                   getCorrectSwiftPath(statusPath));
+        Path pseudoDirPath = getCorrectSwiftPath(statusPath);
+        return SwiftFileStatus.createPseudoDirStatus(pseudoDirPath);
       }
       throw new FileNotFoundException("Not Found " + path.toUri());
     }
@@ -758,8 +760,7 @@ public class SwiftNativeFileSystemStore {
     //calculate the destination
     SwiftObjectPath destPath;
 
-    boolean srcIsFile = !srcMetadata.isDirectory();
-    if (srcIsFile) {
+    if (srcMetadata.isFile()) {
 
       //source is a simple file OR a partitioned file
       // outcomes:
@@ -870,7 +871,9 @@ public class SwiftNativeFileSystemStore {
       //now rename self. If missing, create the dest directory and warn
       if (!SwiftUtils.isRootDir(srcObject)) {
         try {
-          copyThenDeleteObject(srcObject, srcMetadata, targetObjectPath);
+          if (!srcMetadata.isPseudoDir()) {
+            copyThenDeleteObject(srcObject, srcMetadata, targetObjectPath);
+          }
         } catch (FileNotFoundException e) {
           //create the destination directory
           LOG.warn("Source directory deleted during rename", e);

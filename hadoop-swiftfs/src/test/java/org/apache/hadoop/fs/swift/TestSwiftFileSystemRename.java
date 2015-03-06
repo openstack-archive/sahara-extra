@@ -21,9 +21,12 @@ package org.apache.hadoop.fs.swift;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.http.SwiftRestClient;
+import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.compareByteArrays;
@@ -267,4 +270,18 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     rename(path, path2, false, false, false);
   }
 
+  @Test(timeout = SWIFT_TEST_TIMEOUT)
+  public void testRenamePseudoDir() throws Throwable {
+    assumeRenameSupported();
+
+    // create file directory (don't create directory file)
+    SwiftRestClient client;
+    client = SwiftRestClient.getInstance(fs.getUri(), fs.getConf());
+    SwiftObjectPath path = SwiftObjectPath.fromPath(fs.getUri(), new Path("/test/olddir/file"));
+    client.upload(path, new ByteArrayInputStream(new byte[0]), 0);
+
+    rename(path("/test/olddir"), path("/test/newdir"), true, false, true);
+    SwiftTestUtils.assertIsDirectory(fs, path("/test/newdir"));
+    assertIsFile(path("/test/newdir/file"));
+  }
 }

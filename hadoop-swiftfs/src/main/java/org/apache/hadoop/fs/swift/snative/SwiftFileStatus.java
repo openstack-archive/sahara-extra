@@ -31,6 +31,8 @@ public class SwiftFileStatus extends FileStatus {
 
   private SwiftObjectPath dloPrefix = null;
 
+  private boolean isPseudoDirFlag = false;
+
   public SwiftFileStatus() {
   }
 
@@ -63,6 +65,14 @@ public class SwiftFileStatus extends FileStatus {
             access_time, permission, owner, group, path);
   }
 
+  public static SwiftFileStatus createPseudoDirStatus(Path path) {
+    SwiftFileStatus status = new SwiftFileStatus(0, true, 1, 0,
+                                                 System.currentTimeMillis(),
+                                                 path);
+    status.isPseudoDirFlag = true;
+    return status;
+  }
+
   /**
    * A entry is a file if it is not a directory.
    * By implementing it <i>and not marking as an override</i> this
@@ -87,6 +97,10 @@ public class SwiftFileStatus extends FileStatus {
 
   public SwiftObjectPath getDLOPrefix() {
     return dloPrefix;
+  }
+
+  public boolean isPseudoDir() {
+    return isPseudoDirFlag;
   }
 
   @Override
