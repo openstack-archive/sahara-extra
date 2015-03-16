@@ -1804,10 +1804,10 @@ public final class SwiftRestClient {
    * @param accessToken access token
    * @throws SwiftInternalStateException if the client is not yet authenticated
    */
-  private void setAuthToken(HttpMethodBase method, AccessToken accessToken)
+  private void setAuthToken(HttpMethod method, AccessToken accessToken)
       throws SwiftInternalStateException {
     checkNotNull(accessToken,"Not authenticated");
-    method.addRequestHeader(HEADER_AUTH_KEY, accessToken.getId());
+    method.setRequestHeader(HEADER_AUTH_KEY, accessToken.getId());
   }
 
   /**
@@ -1859,7 +1859,7 @@ public final class SwiftRestClient {
         LOG.debug("Reauthenticating");
       }
       //re-auth, this may recurse into the same dir
-      authenticate();
+      setAuthToken(method, authenticate());
       if (LOG.isDebugEnabled()) {
         LOG.debug("Retrying original request");
       }
