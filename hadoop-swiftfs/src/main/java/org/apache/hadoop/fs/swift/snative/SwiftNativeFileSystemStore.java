@@ -544,6 +544,7 @@ public class SwiftNativeFileSystemStore {
     if (!pathWithSlash.endsWith("/")) {
       pathWithSlash = pathWithSlash.concat("/");
     }
+    String prevObjName = "";
     for (SwiftObjectFileStatus status : fileStatusList) {
       String name = status.getName();
       if (name == null) {
@@ -556,7 +557,13 @@ public class SwiftNativeFileSystemStore {
       if (!name.endsWith("/")) {
         final Path filePath = getCorrectSwiftPath(new Path(name));
         files.add(getObjectMetadata(filePath, newest));
+        prevObjName = name;
       } else {
+        if (prevObjName.length() + 1 == name.length() &&
+            name.startsWith(prevObjName)) {
+          // Ignore because this directory object is stored DLO segment file
+          continue;
+        }
         final Path dirPath = getCorrectSwiftPath(toDirPath(new Path(name)));
         files.add(getObjectMetadata(dirPath, newest));
       }
@@ -1195,15 +1202,15 @@ public class SwiftNativeFileSystemStore {
    * @return the file statuses, or an empty array if there are no segments
    * @throws IOException           on IO problems
    */
-  public FileStatus[] listSegments(SwiftFileStatus file, boolean newest)
+  public FileStatus[] listSegments(FileStatus file, boolean newest)
       throws IOException {
-
-    if (file.getDLOPrefix() == null) {
+    SwiftObjectPath prefix = ((SwiftFileStatus)file).getDLOPrefix();
+    if (prefix == null) {
       return new FileStatus[0];
     }
 
     final List<FileStatus> objects;
-    objects = listDirectory(file.getDLOPrefix(), true, newest, false);
+    objects = listDirectory(prefix, true, newest, false);
 
     final ArrayList<FileStatus> segments;
     segments = new ArrayList<FileStatus>(objects.size());

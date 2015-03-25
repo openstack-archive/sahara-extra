@@ -321,7 +321,7 @@ public class TestSwiftFileSystemPartitionedUploads extends
     //compare data
     SwiftTestUtils.compareByteArrays(src, dest, len);
     //finally, check the data
-    FileStatus[] stats = fs.listStatus(path);
+    FileStatus[] stats = getStore().listSegments(fs.getFileStatus(path), true);
     assertEquals("wrong entry count in "
                  + SwiftTestUtils.dumpStats(path.toString(), stats),
                  expected, stats.length);
@@ -470,9 +470,24 @@ public class TestSwiftFileSystemPartitionedUploads extends
     //compare data
     SwiftTestUtils.compareByteArrays(src, dest, len);
     //finally, check the data
-    FileStatus[] stats = fs.listStatus(path);
+    FileStatus[] stats = getStore().listSegments(fs.getFileStatus(path), true);
     assertEquals("wrong entry count in "
                  + SwiftTestUtils.dumpStats(path.toString(), stats),
                  expected, stats.length);
+  }
+
+  /**
+   * Tests directory visibility that stored partitioned file
+   * @throws Throwable
+   */
+  @Test(timeout = SWIFT_BULK_IO_TEST_TIMEOUT)
+  public void testDirectoryVisibility() throws Throwable {
+    final Path filePath = path("/test/file");
+    final byte[] src = SwiftTestUtils.dataset(PART_SIZE_BYTES * 4, 32, 144);
+    FSDataOutputStream out = fs.create(filePath, false);
+    out.write(src, 0, src.length);
+    out.close();
+    assertEquals(1, fs.listStatus(path("/test")).length);
+    assertEquals(1, fs.listStatus(filePath).length);
   }
 }

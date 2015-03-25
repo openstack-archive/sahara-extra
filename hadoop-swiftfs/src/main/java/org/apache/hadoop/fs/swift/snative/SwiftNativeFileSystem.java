@@ -235,7 +235,7 @@ public class SwiftNativeFileSystem extends FileSystem {
     // from the Swift client API, depending on the remote server
     final FileStatus[] listOfFileBlocks;
     if (file instanceof SwiftFileStatus && ((SwiftFileStatus)file).isDLO()) {
-      listOfFileBlocks = store.listSegments((SwiftFileStatus)file, true);
+      listOfFileBlocks = store.listSegments(file, true);
     } else {
       listOfFileBlocks = null;
     }
@@ -420,13 +420,11 @@ public class SwiftNativeFileSystem extends FileSystem {
       LOG.debug("SwiftFileSystem.listStatus for: " + path);
     }
     Path absolutePath = makeAbsolute(path);
-    try {
+    FileStatus status = getFileStatus(absolutePath);
+    if (status.isDir()) {
       return store.listSubPaths(absolutePath, false, true);
-    } catch (FileNotFoundException e) {
-      /* path is not directory. try to get file status */
-      return new FileStatus[] {
-          getFileStatus(absolutePath)
-      };
+    } else {
+      return new FileStatus[] {status};
     }
   }
 
