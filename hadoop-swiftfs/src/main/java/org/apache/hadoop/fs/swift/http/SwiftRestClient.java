@@ -51,6 +51,8 @@ import org.apache.hadoop.fs.swift.auth.AuthenticationWrapperV3;
 import org.apache.hadoop.fs.swift.auth.KeyStoneAuthRequest;
 import org.apache.hadoop.fs.swift.auth.KeystoneApiKeyCredentials;
 import org.apache.hadoop.fs.swift.auth.PasswordAuthenticationRequest;
+import org.apache.hadoop.fs.swift.auth.PasswordAuthenticationRequestV3;
+import org.apache.hadoop.fs.swift.auth.TokenAuthenticationRequestV3;
 import org.apache.hadoop.fs.swift.auth.TrustAuthenticationRequest;
 import org.apache.hadoop.fs.swift.auth.PasswordCredentials;
 import org.apache.hadoop.fs.swift.auth.PasswordCredentialsV3;
@@ -500,31 +502,38 @@ public final class SwiftRestClient {
     String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
     usePublicURL = "true".equals(isPubProp);
     authEndpointPrefix = getOption(props, SWIFT_AUTH_ENDPOINT_PREFIX);
+    boolean isV3 = stringAuthUri.contains("/v3/auth/tokens");
 
-        if (apiKey == null && password == null) {
-            throw new SwiftConfigurationException(
-                    "Configuration for " + filesystemURI +" must contain either "
-                            + SWIFT_PASSWORD_PROPERTY + " or "
-                            + SWIFT_APIKEY_PROPERTY);
-        }
-        //create the (reusable) authentication request
+    if (apiKey == null && password == null) {
+      throw new SwiftConfigurationException(
+                  "Configuration for " + filesystemURI +" must contain either "
+                  + SWIFT_PASSWORD_PROPERTY + " or "
+                  + SWIFT_APIKEY_PROPERTY);
+    }
+    //create the (reusable) authentication request
+    if (isV3) {
+      if (trust_id == null) {
         if (password != null) {
-            if (trust_id == null) {
-                authRequest = new PasswordAuthenticationRequest(tenant,
-                        new PasswordCredentials(
-                                username,
-                                password));
-            } else {
-                authRequest = new TrustAuthenticationRequest(
-                        new PasswordCredentialsV3(username, password, domain_name),
-                        trust_id);
-            }
+          authRequest = new PasswordAuthenticationRequestV3(tenant,
+                  new PasswordCredentialsV3(username, password, null));
         } else {
-            authRequest = new ApiKeyAuthenticationRequest(tenant,
-                    new ApiKeyCredentials(
-                            username, apiKey));
-            keystoneAuthRequest = new KeyStoneAuthRequest(tenant,
-                    new KeystoneApiKeyCredentials(username, apiKey));
+          authRequest = new TokenAuthenticationRequestV3(apiKey);
+        }
+      } else {
+        authRequest = new TrustAuthenticationRequest(
+                new PasswordCredentialsV3(username, password, domain_name),
+                trust_id);
+      }
+    } else {
+      if (password != null) {
+        authRequest = new PasswordAuthenticationRequest(tenant,
+                new PasswordCredentials(username, password));
+      } else {
+        authRequest = new ApiKeyAuthenticationRequest(tenant,
+                new ApiKeyCredentials(username, apiKey));
+        keystoneAuthRequest = new KeyStoneAuthRequest(tenant,
+                new KeystoneApiKeyCredentials(username, apiKey));
+      }
     }
     locationAware = "true".equals(
       props.getProperty(SWIFT_LOCATION_AWARE_PROPERTY, "false"));

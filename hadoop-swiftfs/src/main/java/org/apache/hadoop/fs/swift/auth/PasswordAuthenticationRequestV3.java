@@ -18,28 +18,45 @@
 
 package org.apache.hadoop.fs.swift.auth;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.annotate.JsonWriteNullProperties;
+
 /**
  * Class that represents authentication request to Openstack Keystone v3.
  * Contains basic authentication information.
  * THIS FILE IS MAPPED BY JACKSON TO AND FROM JSON.
  * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
  */
+@JsonWriteNullProperties(false)
 public class PasswordAuthenticationRequestV3 extends AuthenticationRequestV3 {
   /**
    * Credentials for login
    */
-  private IdentityWrapper identity;
+  private final IdentityWrapper identity;
+  private final ScopeWrapper scope;
 
-  public PasswordAuthenticationRequestV3(PasswordCredentialsV3 passwordCredentials) {
-    this.identity = new IdentityWrapper(new PasswordWrapper(passwordCredentials));
+  public PasswordAuthenticationRequestV3(ScopeWrapper scope,
+                                         PasswordCredentialsV3 passwordCreds) {
+    this.identity = new IdentityWrapper(new PasswordWrapper(passwordCreds));
+    this.scope = scope;
+  }
+
+  public PasswordAuthenticationRequestV3(String projectName,
+                                         PasswordCredentialsV3 passwordCreds) {
+      this(projectName == null ? null :
+           new ScopeWrapper(new ProjectWrapper(projectName)),
+           passwordCreds);
   }
 
   public IdentityWrapper getIdentity() {
     return identity;
   }
 
-  public void setIdentity(IdentityWrapper identity) {
-    this.identity = identity;
+  public ScopeWrapper getScope() {
+    return scope;
   }
 
   @Override
@@ -48,8 +65,8 @@ public class PasswordAuthenticationRequestV3 extends AuthenticationRequestV3 {
   }
 
   public static class IdentityWrapper {
-    private PasswordWrapper password;
-    public final String[] methods;
+    private final PasswordWrapper password;
+    private final String[] methods;
 
     public IdentityWrapper(PasswordWrapper password) {
       this.password = password;
@@ -60,13 +77,17 @@ public class PasswordAuthenticationRequestV3 extends AuthenticationRequestV3 {
       return password;
     }
 
-    public void setPassword(PasswordWrapper password) {
-      this.password = password;
+    public String[] getMethods() {
+      return methods;
     }
   }
 
+  /**
+   * THIS CLASS IS MAPPED BY JACKSON TO AND FROM JSON.
+   * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
+   */
   public static class PasswordWrapper {
-    private PasswordCredentialsV3 user;
+    private final PasswordCredentialsV3 user;
 
     public PasswordWrapper(PasswordCredentialsV3 user) {
       this.user = user;
@@ -75,9 +96,73 @@ public class PasswordAuthenticationRequestV3 extends AuthenticationRequestV3 {
     public PasswordCredentialsV3 getUser() {
       return user;
     }
+  }
 
-    public void setUser(PasswordCredentialsV3 user) {
-      this.user = user;
+  /**
+   * THIS CLASS IS MAPPED BY JACKSON TO AND FROM JSON.
+   * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
+   */
+  @JsonWriteNullProperties(false)
+  public static class ScopeWrapper {
+    private final ProjectWrapper project;
+    private final TrustWrapper trust;
+
+    public ScopeWrapper(ProjectWrapper project) {
+      this.project = project;
+      this.trust = null;
+    }
+
+    public ScopeWrapper(TrustWrapper trust) {
+      this.project = null;
+      this.trust = trust;
+    }
+
+    public ProjectWrapper getProject() {
+      return project;
+    }
+
+    @JsonProperty("OS-TRUST:trust")
+    public TrustWrapper getTrust() {
+      return trust;
+    }
+  }
+
+  /**
+   * THIS CLASS IS MAPPED BY JACKSON TO AND FROM JSON.
+   * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
+   */
+  public static class ProjectWrapper {
+    private final String name;
+    private final Map<String, String> domain;
+
+    public ProjectWrapper(String projectName) {
+      this.domain = new HashMap();
+      this.domain.put("id", "default");
+      this.name = projectName;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public Map<String, String> getDomain() {
+      return domain;
+    }
+  }
+
+  /**
+   * THIS CLASS IS MAPPED BY JACKSON TO AND FROM JSON.
+   * DO NOT RENAME OR MODIFY FIELDS AND THEIR ACCESSORS.
+   */
+  public static class TrustWrapper {
+    private final String id;
+
+    public TrustWrapper(String trustId) {
+      id = trustId;
+    }
+
+    public String getId() {
+      return id;
     }
   }
 }
