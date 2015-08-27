@@ -26,6 +26,12 @@ case "${PLUGIN_VERSION}" in
         HADOOP_VERSION="2.6.0"
         BUILD_ARGS="-P hadoop-2"
     ;;
+    "2.7.1")
+        OOZIE_VERSION="4.2.0"
+        PREV_OOZIE_HADOOP_VERSION="2.3.0"
+        HADOOP_VERSION="2.7.1"
+        BUILD_ARGS="-Puber -P hadoop-2"
+    ;;
 esac
 
 echo "Install required packages"
