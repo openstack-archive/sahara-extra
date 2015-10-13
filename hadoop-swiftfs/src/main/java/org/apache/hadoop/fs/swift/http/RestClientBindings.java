@@ -42,7 +42,7 @@ public final class RestClientBindings {
   private static final Log LOG = LogFactory.getLog(RestClientBindings.class);
 
   public static final String E_INVALID_NAME = "Invalid swift hostname '%s':" +
-          " hostname must in form container.service";
+          " hostname must inform container.service";
 
   /**
    * Public for testing : build the full prefix for use in resolving
