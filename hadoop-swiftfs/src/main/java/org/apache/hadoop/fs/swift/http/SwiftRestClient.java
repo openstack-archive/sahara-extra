@@ -515,7 +515,7 @@ public final class SwiftRestClient {
       if (trust_id == null) {
         if (password != null) {
           authRequest = new PasswordAuthenticationRequestV3(tenant,
-                  new PasswordCredentialsV3(username, password, null));
+                  new PasswordCredentialsV3(username, password, domain_name));
         } else {
           authRequest = new TokenAuthenticationRequestV3(apiKey);
         }

@@ -47,7 +47,7 @@ public class PasswordAuthenticationRequestV3 extends AuthenticationRequestV3 {
   public PasswordAuthenticationRequestV3(String projectName,
                                          PasswordCredentialsV3 passwordCreds) {
       this(projectName == null ? null :
-           new ScopeWrapper(new ProjectWrapper(projectName)),
+           new ScopeWrapper(new ProjectWrapper(projectName, passwordCreds.domain)),
            passwordCreds);
   }
 
@@ -135,9 +135,8 @@ public class PasswordAuthenticationRequestV3 extends AuthenticationRequestV3 {
     private final String name;
     private final Map<String, String> domain;
 
-    public ProjectWrapper(String projectName) {
-      this.domain = new HashMap();
-      this.domain.put("id", "default");
+    public ProjectWrapper(String projectName, Map<String, String> domain) {
+      this.domain = domain;
       this.name = projectName;
     }
 
