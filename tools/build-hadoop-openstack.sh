@@ -4,7 +4,7 @@ set -eux
 set -o pipefail
 
 function usage {
-    echo "Usage: $(basename $0) <plugin-version>"
+    echo "Usage: $(basename $0) <hadoop-version>"
 }
 
 if [[ $# -ne 1 ]]; then
@@ -12,9 +12,9 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-PLUGIN_VERSION=${1}
-case "${PLUGIN_VERSION}" in
-    "2.6.0")
+HADOOP_VERSION=${1}
+case "${HADOOP_VERSION}" in
+    "2.2.0" | "2.3.0" | "2.5.0" | "2.6.0" | "2.7.1")
         EXTRA_ARGS="-P hadoop2"
     ;;
 esac
@@ -25,7 +25,7 @@ mvn --version
 
 echo "Build hadoop-openstack library"
 pushd hadoop-swiftfs
-mvn clean package ${EXTRA_ARGS:-} -Dhadoop.version=${PLUGIN_VERSION}
+mvn clean package ${EXTRA_ARGS:-} -Dhadoop.version=${HADOOP_VERSION}
 mkdir -p ./../dist/hadoop-openstack/
-mv target/hadoop-openstack-3.0.0-SNAPSHOT.jar ./../dist/hadoop-openstack/hadoop-openstack-${PLUGIN_VERSION}.jar
+mv target/hadoop-openstack-3.0.0-SNAPSHOT.jar ./../dist/hadoop-openstack/hadoop-openstack-${HADOOP_VERSION}.jar
 popd
