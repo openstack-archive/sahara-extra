@@ -255,7 +255,7 @@ public class SwiftNativeFileSystemStore {
         length = Long.parseLong(header.getValue());
       }
       if (SwiftProtocolConstants.HEADER_LAST_MODIFIED.equals(headerName)) {
-        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat(PATTERN);
+        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat(PATTERN, Locale.US);
         try {
           lastModified = simpleDateFormat.parse(header.getValue()).getTime();
         } catch (ParseException e) {
