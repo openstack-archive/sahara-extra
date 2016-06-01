@@ -47,14 +47,16 @@ public class PasswordCredentialsV3 {
    * @param password user password
    * @param domain_name user's domain name
    */
-  public PasswordCredentialsV3(String name, String password, String domain_name) {
+  public PasswordCredentialsV3(String name, String password, String domain_name, String domain_id) {
     this.name = name;
     this.password = password;
     this.domain = new HashMap();
-    if (domain_name == null) {
-      this.domain.put("id", "default");
-    } else {
+    if (domain_id != null) {
+      this.domain.put("id", domain_id);
+    } else if (domain_name != null) {
       this.domain.put("name", domain_name);
+    } else {
+      this.domain.put("id", "default");
     }
   }
 

@@ -152,6 +152,11 @@ public final class SwiftRestClient {
   private final String domain_name;
 
   /**
+   * user's domain id
+   */
+  private final String domain_id;
+
+  /**
    * user api key
    */
   private final String apiKey;
@@ -491,6 +496,7 @@ public final class SwiftRestClient {
     password = props.getProperty(SWIFT_PASSWORD_PROPERTY);
     trust_id = props.getProperty(SWIFT_TRUST_ID_PROPERTY);
     domain_name = props.getProperty(SWIFT_DOMAIN_NAME_PROPERTY);
+    domain_id = props.getProperty(SWIFT_DOMAIN_ID_PROPERTY);
     apiKey = props.getProperty(SWIFT_APIKEY_PROPERTY);
     //optional
     region = props.getProperty(SWIFT_REGION_PROPERTY);
@@ -515,13 +521,15 @@ public final class SwiftRestClient {
       if (trust_id == null) {
         if (password != null) {
           authRequest = new PasswordAuthenticationRequestV3(tenant,
-                  new PasswordCredentialsV3(username, password, domain_name));
+                  new PasswordCredentialsV3(username, password, domain_name,
+                      domain_id));
         } else {
           authRequest = new TokenAuthenticationRequestV3(apiKey);
         }
       } else {
         authRequest = new TrustAuthenticationRequest(
-                new PasswordCredentialsV3(username, password, domain_name),
+                new PasswordCredentialsV3(username, password, domain_name,
+                    domain_id),
                 trust_id);
       }
     } else {
