@@ -14,18 +14,6 @@ fi
 
 PLUGIN_VERSION=${1}
 case "${PLUGIN_VERSION}" in
-    "1.2.1")
-        OOZIE_VERSION="4.0.1"
-        PREV_OOZIE_HADOOP_VERSION="1.1.1"
-        HADOOP_VERSION="1.2.1"
-        BUILD_ARGS=""
-    ;;
-    "2.6.0")
-        OOZIE_VERSION="4.0.1"
-        PREV_OOZIE_HADOOP_VERSION="2.3.0"
-        HADOOP_VERSION="2.6.0"
-        BUILD_ARGS="-P hadoop-2"
-    ;;
     "2.7.1")
         OOZIE_VERSION="4.2.0"
         PREV_OOZIE_HADOOP_VERSION="2.3.0"
