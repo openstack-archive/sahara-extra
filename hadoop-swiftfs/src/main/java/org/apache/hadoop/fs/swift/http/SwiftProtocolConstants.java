@@ -207,6 +207,7 @@ public class SwiftProtocolConstants {
   public static final String DOT_AUTH_URL = ".auth.url";
   public static final String DOT_AUTH_ENDPOINT_PREFIX = ".auth.endpoint.prefix";
   public static final String DOT_TENANT = ".tenant";
+  public static final String DOT_CONTAINER_TENANT = ".container.tenant";
   public static final String DOT_USERNAME = ".username";
   public static final String DOT_PASSWORD = ".password";
   public static final String DOT_TRUST_ID = ".trust.id";
@@ -232,6 +233,7 @@ public class SwiftProtocolConstants {
   public static final String SWIFT_AUTH_ENDPOINT_PREFIX =
       FS_SWIFT + DOT_AUTH_ENDPOINT_PREFIX;
   public static final String SWIFT_TENANT_PROPERTY = FS_SWIFT + DOT_TENANT;
+  public static final String SWIFT_CONTAINER_TENANT_PROPERTY = FS_SWIFT + DOT_CONTAINER_TENANT;
   public static final String SWIFT_USERNAME_PROPERTY = FS_SWIFT + DOT_USERNAME;
   public static final String SWIFT_PASSWORD_PROPERTY = FS_SWIFT + DOT_PASSWORD;
   public static final String SWIFT_TRUST_ID_PROPERTY = FS_SWIFT + DOT_TRUST_ID;
