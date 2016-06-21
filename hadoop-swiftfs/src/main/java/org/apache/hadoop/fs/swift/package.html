@@ -58,14 +58,14 @@ single set of login credentials for S3 (username and key), which are used to
 authenticate the HTTP operations.
 
 For swift, we need to know not only which "container" name, but which credentials
-to use to authenticate with it -and which URL to use for authentication.
+to use to authenticate with it and which URL to use for authentication.
 
 This has led to a different design pattern from S3, as instead of simple bucket names,
 the hostname of an S3 container is two-level, the name of the service provider
 being the second path: <code>swift://bucket.service/</code>
 
 The <code>service</code> portion of this domainame is used as a reference into
-the client settings -and so identify the service provider of that container.
+the client settings and so identify the service provider of that container.
 
 
 <h2>Testing</h2>
