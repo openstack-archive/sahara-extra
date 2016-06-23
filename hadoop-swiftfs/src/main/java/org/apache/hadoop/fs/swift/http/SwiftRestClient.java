@@ -180,6 +180,7 @@ public final class SwiftRestClient {
    */
   private final String container;
   private final String serviceDescription;
+  private final String containerTenant;
 
   /**
    * Access token (Secret)
@@ -502,6 +503,9 @@ public final class SwiftRestClient {
     region = props.getProperty(SWIFT_REGION_PROPERTY);
     //tenant is optional
     tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
+    //containerTenant is optional
+    containerTenant = props.getProperty(SWIFT_CONTAINER_TENANT_PROPERTY);
+
     //service is used for diagnostics
     serviceProvider = props.getProperty(SWIFT_SERVICE_PROPERTY);
     container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
@@ -1303,6 +1307,15 @@ public final class SwiftRestClient {
 
       accessToken = access.getToken();
       String path = getAuthEndpointPrefix() + accessToken.getTenant().getId();
+
+      // Overwrite the user tenant with the shared container tenant id (container.tenant)
+      if (containerTenant != null) {
+        path = getAuthEndpointPrefix() + containerTenant;
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("overwritten path: " + path);
+        }
+      }
+
       String host = endpointURI.getHost();
       try {
         objectLocation = new URI(endpointURI.getScheme(),
@@ -1318,6 +1331,13 @@ public final class SwiftRestClient {
                                  + " + " + path,
                                  e);
       }
+
+      // Overwrite the user tenant with the shared container tenant id (container.tenant)
+      if (containerTenant != null) {
+        endpointURI = objectLocation;
+      }
+
+
       setAuthDetails(endpointURI, objectLocation, accessToken);
 
       if (LOG.isDebugEnabled()) {
@@ -1377,6 +1397,15 @@ public final class SwiftRestClient {
 
       URI objectLocation = null;
       String path = getAuthEndpointPrefix() + token.getTenant().getId();
+
+      // Overwrite the user tenant with the shared container tenant id (container.tenant)
+      if (containerTenant != null) {
+        path = getAuthEndpointPrefix() + containerTenant;
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("overwritten path: " + path);
+        }
+      }
+
       try {
         objectLocation = new URI(endpointURI.getScheme(),
                                  null,
@@ -1390,6 +1419,11 @@ public final class SwiftRestClient {
                                  + endpointURI
                                  + " + " + path,
                                  e);
+      }
+
+      // Overwrite the user tenant with the shared container tenant id (container.tenant)
+      if (containerTenant != null) {
+        endpointURI = objectLocation;
       }
 
       setAuthDetails(endpointURI, objectLocation, token);
@@ -1968,6 +2002,14 @@ public final class SwiftRestClient {
    */
   public String getTenant() {
     return tenant;
+  }
+
+  /**
+   * Get the tenant to which this client is bound
+   * @return the tenant
+   */
+  public String getContainerTenant() {
+    return containerTenant;
   }
 
   /**
