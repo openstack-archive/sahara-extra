@@ -150,6 +150,11 @@ public class SwiftNativeFileSystem extends FileSystem {
     return workingDir;
   }
 
+  @Override
+  public String getCanonicalServiceName() {
+    return null;
+  }
+
   /**
    * @param dir user working directory
    */
