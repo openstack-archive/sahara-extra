@@ -20,7 +20,7 @@ case "${HADOOP_VERSION}" in
 esac
 
 echo "Install required packages"
-sudo apt-get install -y maven openjdk-7-jdk
+sudo apt-get install -y maven openjdk-8-jdk-headless
 mvn --version
 
 echo "Build hadoop-openstack library"
