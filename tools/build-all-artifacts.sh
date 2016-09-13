@@ -12,5 +12,5 @@ do
     ./tools/build-hadoop-openstack.sh $BRANCH ${ver}
 done
 
-cp -r ./common-artifacts ./../dist/
-
+cp -r common-artifacts/ dist/
+ls dist/
