@@ -1,4 +1,5 @@
 EDP Examples
 ============
 
-The EDP examples have been moved to the **sahara** repo under *sahara/etc/edp-examples*
+All files from this directory have been moved to new
+sahara-tests repository: https://git.openstack.org/cgit/openstack/sahara-tests
