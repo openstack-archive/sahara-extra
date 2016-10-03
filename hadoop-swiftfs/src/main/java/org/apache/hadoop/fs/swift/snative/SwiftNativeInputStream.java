@@ -89,6 +89,8 @@ class SwiftNativeInputStream extends FSInputStream {
    */
   private long rangeOffset = 0;
 
+  private long nextReadPosition = 0;
+
   public SwiftNativeInputStream(SwiftNativeFileSystemStore storeNative,
       FileSystem.Statistics statistics, Path path, long bufferSize)
           throws IOException {
@@ -138,6 +140,7 @@ class SwiftNativeInputStream extends FSInputStream {
     verifyOpen();
     int result = -1;
     try {
+      seekStream();
       result = httpStream.read();
     } catch (IOException e) {
       String msg = "IOException while reading " + path
@@ -300,6 +303,13 @@ class SwiftNativeInputStream extends FSInputStream {
     if (targetPos < 0) {
       throw new IOException("Negative Seek offset not supported");
     }
+    nextReadPosition = targetPos;
+  }
+
+  public synchronized void realSeek(long targetPos) throws IOException {
+    if (targetPos < 0) {
+      throw new IOException("Negative Seek offset not supported");
+    }
     //there's some special handling of near-local data
     //as the seek can be omitted if it is in/adjacent
     long offset = targetPos - pos;
@@ -342,6 +352,18 @@ class SwiftNativeInputStream extends FSInputStream {
 
     innerClose("seeking to " + targetPos);
     fillBuffer(targetPos);
+  }
+
+  /**
+   * Lazy seek.
+   * @throws IOException
+   */
+  private void seekStream() throws IOException {
+    if (httpStream != null && nextReadPosition == pos) {
+      // already at specified position
+      return;
+    }
+    realSeek(nextReadPosition);
   }
 
   /**
