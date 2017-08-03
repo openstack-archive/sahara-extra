@@ -39,7 +39,7 @@ public class AuthenticationWrapperV3 {
   }
 
   /**
-   * @param access sets authentication response
+   * @param token sets authentication response
    */
   public void setToken(AuthenticationResponseV3 token) {
     this.token = token;
