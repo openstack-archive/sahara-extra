@@ -16,10 +16,13 @@ PLUGIN_VERSION=${1}
 case "${PLUGIN_VERSION}" in
     "2.7.1")
         OOZIE_VERSION="4.2.0"
-        PREV_OOZIE_HADOOP_VERSION="2.3.0"
         HADOOP_VERSION="2.7.1"
         BUILD_ARGS="-Puber -P hadoop-2"
     ;;
+    "2.8.2")
+        OOZIE_VERSION="4.3.0"
+        HADOOP_VERSION="2.8.2"
+        BUILD_ARGS="-Puber -P hadoop-2"
 esac
 
 echo "Install required packages"
@@ -33,13 +36,28 @@ tar xzf oozie-${OOZIE_VERSION}.tar.gz
 
 echo "Build Oozie"
 pushd oozie-${OOZIE_VERSION}
-find . -name pom.xml | xargs sed -ri "s/${PREV_OOZIE_HADOOP_VERSION}/${HADOOP_VERSION}/g"
 if [ "${OOZIE_VERSION}" = "4.2.0" ]; then
     # see https://issues.apache.org/jira/browse/OOZIE-2417
     mv pom.xml pom.xml.orig
     xmlstarlet ed -P -N N="http://maven.apache.org/POM/4.0.0" -d "/N:project/N:repositories/N:repository[N:url='http://repository.codehaus.org/']" pom.xml.orig >pom.xml
 fi
-./bin/mkdistro.sh assembly:single ${BUILD_ARGS} -DjavaVersion=1.7 -DtargetJavaVersion=1.7 -DskipTests
+if [ "${OOZIE_VERSION}" = "4.3.0" ]; then
+    # see https://issues.apache.org/jira/browse/OOZIE-2533
+    patch -p0 < ./../tools/oozie_webUI.patch
+
+    # add commons-httpclient as a dependency to sharelib/oozie
+    pushd sharelib/oozie
+    mv pom.xml pom.xml.orig
+    xmlstarlet ed -N N="http://maven.apache.org/POM/4.0.0" --subnode "/N:project/N:dependencies" -t elem -n dependency -v '' pom.xml.orig > pom.xml.tmp
+    xmlstarlet ed -P -N N="http://maven.apache.org/POM/4.0.0" \
+        --subnode "/N:project/N:dependencies/N:dependency[last()]" -t elem -n groupId -v commons-httpclient \
+        --subnode "/N:project/N:dependencies/N:dependency[last()]" -t elem -n artifactId -v commons-httpclient \
+        --subnode "/N:project/N:dependencies/N:dependency[last()]" -t elem -n version -v 3.1 \
+        --subnode "/N:project/N:dependencies/N:dependency[last()]" -t elem -n scope -v compile pom.xml.tmp > pom.xml
+    popd
+fi
+
+./bin/mkdistro.sh assembly:single ${BUILD_ARGS} -Dhadoop.version=${HADOOP_VERSION} -DjavaVersion=1.8 -DtargetJavaVersion=1.8 -DskipTests
 mkdir -p ./../dist/oozie/
 mv distro/target/oozie-${OOZIE_VERSION}-distro.tar.gz ./../dist/oozie/oozie-${OOZIE_VERSION}-hadoop-${HADOOP_VERSION}.tar.gz
 popd
