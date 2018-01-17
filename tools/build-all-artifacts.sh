@@ -12,5 +12,12 @@ do
     ./tools/build-hadoop-openstack.sh $BRANCH ${ver}
 done
 
+echo "Building all oozie versions"
+hadoop_oozie_versions=(2.7.1)
+for ver in ${hadoop_oozie_versions[*]}
+do
+    ./tools/build-oozie.sh ${ver}
+done
+
 cp -r common-artifacts/ dist/
 ls dist/
