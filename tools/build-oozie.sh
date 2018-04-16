@@ -19,6 +19,11 @@ case "${PLUGIN_VERSION}" in
         HADOOP_VERSION="2.7.1"
         BUILD_ARGS="-Puber -P hadoop-2"
     ;;
+    "2.7.5")
+        OOZIE_VERSION="4.3.0"
+        HADOOP_VERSION="2.7.5"
+        BUILD_ARGS="-Puber -P hadoop-2"
+    ;;
     "2.8.2")
         OOZIE_VERSION="4.3.0"
         HADOOP_VERSION="2.8.2"
