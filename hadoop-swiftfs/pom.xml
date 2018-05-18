@@ -29,6 +29,8 @@
     <packaging>jar</packaging>
 
   <properties>
+    <targetJavaVersion>1.6</targetJavaVersion>
+    <sourceJavaVersion>1.6</sourceJavaVersion>
     <file.encoding>UTF-8</file.encoding>
     <downloadSources>true</downloadSources>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -66,6 +68,15 @@
         <hadoop.version>2.4.1</hadoop.version>
       </properties>
     </profile>
+    <profile>
+      <id>hadoop3</id>
+      <properties>
+        <hadoop.artifactid>hadoop-common</hadoop.artifactid>
+        <hadoop.version>3.0.1</hadoop.version>
+        <targetJavaVersion>1.8</targetJavaVersion>
+        <sourceJavaVersion>1.8</sourceJavaVersion>
+      </properties>
+    </profile>
   </profiles>
 
   <build>
@@ -99,8 +110,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>${sourceJavaVersion}</source>
+          <target>${targetJavaVersion}</target>
         </configuration>
       </plugin>
       <plugin>

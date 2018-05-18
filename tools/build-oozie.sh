@@ -28,6 +28,12 @@ case "${PLUGIN_VERSION}" in
         OOZIE_VERSION="4.3.0"
         HADOOP_VERSION="2.8.2"
         BUILD_ARGS="-Puber -P hadoop-2"
+    ;;
+    "3.0.1")
+        OOZIE_VERSION="5.0.0"
+        HADOOP_VERSION="3.0.1"
+        BUILD_ARGS="-Puber "
+
 esac
 
 echo "Install required packages"
@@ -60,6 +66,10 @@ if [ "${OOZIE_VERSION}" = "4.3.0" ]; then
         --subnode "/N:project/N:dependencies/N:dependency[last()]" -t elem -n version -v 3.1 \
         --subnode "/N:project/N:dependencies/N:dependency[last()]" -t elem -n scope -v compile pom.xml.tmp > pom.xml
     popd
+fi
+if [ "${OOZIE_VERSION}" = "5.0.0" ]; then
+    # see https://issues.apache.org/jira/browse/OOZIE-3219
+    patch -p0 < ./../tools/oozie_core.patch
 fi
 
 ./bin/mkdistro.sh assembly:single ${BUILD_ARGS} -Dhadoop.version=${HADOOP_VERSION} -DjavaVersion=1.8 -DtargetJavaVersion=1.8 -DskipTests

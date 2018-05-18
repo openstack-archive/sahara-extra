@@ -18,6 +18,9 @@ case "${HADOOP_VERSION}" in
     "2.2.0" | "2.3.0" | "2.5.0" | "2.6.0" | "2.7.1" | "2.7.5" | "2.8.2")
         EXTRA_ARGS="-P hadoop2"
     ;;
+    "3.0.1")
+        EXTRA_ARGS="-P hadoop3"
+    ;;
 esac
 
 echo "Install required packages"
