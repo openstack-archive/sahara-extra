@@ -1,0 +1,6 @@
+- hosts: all
+  tasks:
+    - name: Run tools/build-all-artifacts.sh
+      command: bash -xe tools/build-all-artifacts.sh '{{ zuul.branch }}'
+      args:
+        chdir: '{{ zuul.project.src_dir }}'

@@ -1,0 +1,33 @@
+- project:
+    check:
+      jobs:
+        - sahara-extra-build-artifacts
+    gate:
+      jobs:
+        - sahara-extra-build-artifacts
+    post:
+      jobs:
+        - sahara-extra-publish-artifacts
+
+- job:
+    name: sahara-extra-build-artifacts
+    description: |
+      Build the artifacts used by Sahara clusters and jobs.
+    parent: unittests
+    timeout: 3600
+    required-projects:
+      - openstack/sahara-extra
+    run: playbooks/build-artifacts/run.yaml
+
+- job:
+    name: sahara-extra-publish-artifacts
+    description: |
+      Build the artifacts used by Sahara clusters and jobs
+      and publish them on tarballs.openstack.org
+    parent: publish-openstack-artifacts
+    timeout: 3600
+    final: true
+    required-projects:
+      - openstack/sahara-extra
+    run: playbooks/build-artifacts/run.yaml
+    post-run: playbooks/build-artifacts/post.yaml
