@@ -4,7 +4,7 @@
     - synchronize:
         dest: "{{ zuul.executor.work_root }}/artifacts/"
         mode: pull
-        src: "{{ ansible_user_dir }}/dist"
+        src: "{{ zuul.project.src_dir }}/dist"
         copy_links: true
         verify_host: true
         rsync_opts:
