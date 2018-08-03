@@ -1,0 +1,14 @@
+- hosts: all
+  name: Copy artifacts
+  tasks:
+    - synchronize:
+        dest: "{{ zuul.executor.work_root }}/artifacts/"
+        mode: pull
+        src: "{{ zuul.project.src_dir }}/dist"
+        copy_links: true
+        verify_host: true
+        rsync_opts:
+          - --include=/dist/**
+          - --include=*/
+          - --exclude=*
+          - --prune-empty-dirs
