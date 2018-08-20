@@ -1,13 +1,18 @@
 - project:
+    templates:
+      - check-requirements
     check:
       jobs:
         - sahara-extra-build-artifacts
+        - openstack-tox-pep8
     gate:
       jobs:
         - sahara-extra-build-artifacts
+        - openstack-tox-pep8
     post:
       jobs:
         - sahara-extra-publish-artifacts
+        - publish-openstack-python-branch-tarball
 
 - job:
     name: sahara-extra-build-artifacts
