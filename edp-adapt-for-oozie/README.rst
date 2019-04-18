@@ -4,7 +4,7 @@ Sources for main function wrapper that adapt for oozie
 
 In order to pass configurations to MapReduce Application through oozie,
 it is necessary to add the following code.
-(https://github.com/openstack/sahara/blob/master/etc/edp-examples/edp-java/README.rst)
+(https://opendev.org/openstack/sahara-tests/src/branch/master/sahara_tests/scenario/defaults/edp-examples/edp-java/README.rst)
 
     // This will add properties from the <configuration> tag specified
     // in the Oozie workflow.  For java actions, Oozie writes the
