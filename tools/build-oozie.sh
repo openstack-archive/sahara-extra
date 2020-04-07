@@ -72,6 +72,9 @@ if [ "${OOZIE_VERSION}" = "5.0.0" ]; then
     patch -p0 < ./../tools/oozie_core.patch
 fi
 
+mv pom.xml pom.xml.tmp
+xmlstarlet ed -P -N N="http://maven.apache.org/POM/4.0.0" -u "/N:project/N:repositories/N:repository[N:url='http://repo1.maven.org/maven2']/N:url" -v "https://repo1.maven.org/maven2" pom.xml.tmp >pom.xml
+
 ./bin/mkdistro.sh assembly:single ${BUILD_ARGS} -Dhadoop.version=${HADOOP_VERSION} -DjavaVersion=1.8 -DtargetJavaVersion=1.8 -DskipTests
 mkdir -p ./../dist/oozie/
 mv distro/target/oozie-${OOZIE_VERSION}-distro.tar.gz ./../dist/oozie/oozie-${OOZIE_VERSION}-hadoop-${HADOOP_VERSION}.tar.gz
