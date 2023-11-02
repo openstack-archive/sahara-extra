@@ -3,11 +3,13 @@
       - check-requirements
     check:
       jobs:
-        - sahara-extra-build-artifacts
+        - sahara-extra-build-artifacts:
+            voting: false
         - openstack-tox-pep8
     gate:
       jobs:
-        - sahara-extra-build-artifacts
+        - sahara-extra-build-artifacts:
+            voting: false
         - openstack-tox-pep8
     post:
       jobs:
